@@ -21,19 +21,42 @@ ok() {
   notes+=("ok: $1")
 }
 
-# --- gitleaks ----------------------------------------------------------
+# --- gitleaks (working tree) -------------------------------------------
+# --no-git sees the files as they are now, including uncommitted edits.
 gitleaks_out=""
+gitleaks_git_out=""
 if command -v gitleaks >/dev/null 2>&1; then
   if gitleaks detect --source "$ROOT" --config "$ROOT/integrity/gitleaks.toml" --no-git --redact --report-format json --report-path /tmp/wolfe-gitleaks.json >/tmp/wolfe-gitleaks.log 2>&1; then
-    ok "gitleaks clean"
+    ok "gitleaks working tree clean"
     gitleaks_out="clean"
   else
-    fail "gitleaks reported findings (see /tmp/wolfe-gitleaks.log)"
+    fail "gitleaks reported findings in the working tree (see /tmp/wolfe-gitleaks.log)"
     gitleaks_out="findings"
   fi
 else
   notes+=("skip: gitleaks is not installed; custom greps still ran")
   gitleaks_out="not installed"
+fi
+
+# --- gitleaks (git history) --------------------------------------------
+# --no-git misses secrets that were committed and later deleted.
+# Scan the full log by default. Override with WOLFE_SCAN_GIT_LOG_OPTS
+# (for example origin/main..HEAD) when you only want the push range.
+if command -v gitleaks >/dev/null 2>&1 && git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  gitleaks_hist_args=(detect --source "$ROOT" --config "$ROOT/integrity/gitleaks.toml" --redact --report-format json --report-path /tmp/wolfe-gitleaks-git.json)
+  gitleaks_hist_args+=(--log-opts "${WOLFE_SCAN_GIT_LOG_OPTS:---all}")
+  if gitleaks "${gitleaks_hist_args[@]}" >/tmp/wolfe-gitleaks-git.log 2>&1; then
+    ok "gitleaks git history clean"
+    gitleaks_git_out="clean"
+  else
+    fail "gitleaks reported findings in git history (see /tmp/wolfe-gitleaks-git.log)"
+    gitleaks_git_out="findings"
+  fi
+elif ! command -v gitleaks >/dev/null 2>&1; then
+  gitleaks_git_out="not installed"
+else
+  notes+=("skip: not a git checkout; history scan not run")
+  gitleaks_git_out="not a git checkout"
 fi
 
 # Files to scan: tracked-like tree, no .git
@@ -80,6 +103,23 @@ if [[ -n "$export_hits" ]]; then
   fail "scrubbed-export placeholder present in: $export_hits"
 else
   ok "scrubbed-export placeholders absent"
+fi
+
+# --- git history pickaxe for custom needles ----------------------------
+# gitleaks may not know our private-instance strings. git log -S finds
+# them even after the commit that deleted the file.
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  history_hits=""
+  for needle in "$POC_ID" "${export_needles[@]}"; do
+    if [[ -n "$(git -C "$ROOT" log --all -S "$needle" --pretty=format:%h)" ]]; then
+      history_hits+="$needle "
+    fi
+  done
+  if [[ -n "$history_hits" ]]; then
+    fail "git history still contains scrubbed identifiers: $history_hits"
+  else
+    ok "git history has no scrubbed identifiers"
+  fi
 fi
 
 # --- emails ------------------------------------------------------------
@@ -133,7 +173,8 @@ fi
   echo
   echo "Ran at ${STAMP} on the working tree."
   echo
-  echo "gitleaks: ${gitleaks_out}"
+  echo "gitleaks working tree: ${gitleaks_out}"
+  echo "gitleaks git history: ${gitleaks_git_out}"
   echo
   echo "## Results"
   echo

@@ -8,7 +8,7 @@ If a value still looks like `<PLACEHOLDER>`, the tool exits.
 
 | Command | Job |
 | --- | --- |
-| `health` | Read-only glance: URLs, disk, snapshot age, installer paths. |
+| `health` | Read-only glance: URLs, disk, snapshot age, installer paths. Exits non-zero when the newest restic snapshot is older than `RESTIC_MAX_AGE_HOURS`. |
 | `maintenance` | Write `WEB_ROOT/maintenance.on`, then call `MAINTENANCE_HOOK`. |
 | `backup` | Dump, restic backup, list, restore to a target. |
 | `rebuild` | Origin rebuild skeleton. Does not call a cloud API. |

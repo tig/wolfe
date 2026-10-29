@@ -46,25 +46,109 @@ _source_if() {
   return 1
 }
 
-load_site() {
-  if ! _source_if "$SITE_ENV"; then
-    if _source_if "$ROOT/site/site.env.example"; then
-      err "site/site.env is missing; loading the example (dry-run only)."
-    else
-      die "no site contract found."
+# Source KEY=value lines only when that key is unset or empty.
+# Bound site.env must win over module examples.
+_source_fill_missing() {
+  local file="$1"
+  local line key
+  [[ -f "$file" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    key="${line%%=*}"
+    key="${key//[[:space:]]/}"
+    [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+    if [[ -z "${!key:-}" ]]; then
+      # shellcheck disable=SC2163,SC1090
+      eval "$line"
     fi
+  done <"$file"
+  return 0
+}
+
+load_site() {
+  local site_bound=0
+  if _source_if "$SITE_ENV"; then
+    site_bound=1
+  elif _source_if "$ROOT/site/site.env.example"; then
+    err "site/site.env is missing; loading the example (dry-run only)."
+  else
+    die "no site contract found."
   fi
-  _source_if "$PINS_ENV" || _source_if "$ROOT/site/pins.env.example" || true
+  if [[ "$site_bound" == "1" ]]; then
+    _source_if "$PINS_ENV" || _source_fill_missing "$ROOT/site/pins.env.example" || true
+  else
+    _source_if "$PINS_ENV" || _source_if "$ROOT/site/pins.env.example" || true
+  fi
 
   local m
   for m in ${MODULES:-}; do
-    _source_if "$ROOT/modules/$m/site.env" \
-      || _source_if "$ROOT/modules/$m/site.env.example" \
-      || true
-    _source_if "$ROOT/modules/$m/pins.env" \
-      || _source_if "$ROOT/modules/$m/pins.env.example" \
-      || true
+    if [[ -f "$ROOT/modules/$m/site.env" ]]; then
+      _source_if "$ROOT/modules/$m/site.env"
+    elif [[ "$site_bound" == "1" ]]; then
+      _source_fill_missing "$ROOT/modules/$m/site.env.example" || true
+    else
+      _source_if "$ROOT/modules/$m/site.env.example" || true
+    fi
+    if [[ -f "$ROOT/modules/$m/pins.env" ]]; then
+      _source_if "$ROOT/modules/$m/pins.env"
+    elif [[ "$site_bound" == "1" ]]; then
+      _source_fill_missing "$ROOT/modules/$m/pins.env.example" || true
+    else
+      _source_if "$ROOT/modules/$m/pins.env.example" || true
+    fi
   done
+}
+
+# Hours between an ISO-8601 UTC timestamp and now. Empty/unparseable -> empty.
+hours_since() {
+  local ts="${1:-}"
+  local then now
+  [[ -n "$ts" ]] || return 1
+  then="$(date -u -d "$ts" +%s 2>/dev/null)" || return 1
+  now="$(date -u +%s)"
+  printf '%s' "$(( (now - then) / 3600 ))"
+}
+
+# 0 if age_hours is a number <= max_hours.
+snapshot_age_ok() {
+  local age_hours="${1:-}"
+  local max_hours="${2:-36}"
+  [[ "$age_hours" =~ ^[0-9]+$ ]] || return 1
+  [[ "$max_hours" =~ ^[0-9]+$ ]] || return 1
+  [[ "$age_hours" -le "$max_hours" ]]
+}
+
+# Log latest snapshot age. Return 1 when the stamp is missing, unparseable, or stale.
+report_snapshot_age() {
+  local latest="${1:-}"
+  local max_hours="${2:-${RESTIC_MAX_AGE_HOURS:-36}}"
+  local age
+  if [[ -z "$latest" ]]; then
+    err "restic latest: unavailable. That is a finding."
+    return 1
+  fi
+  age="$(hours_since "$latest")" || {
+    err "restic latest timestamp is unparseable: $latest"
+    return 1
+  }
+  log "restic latest: $latest (${age}h old, max ${max_hours}h)"
+  if snapshot_age_ok "$age" "$max_hours"; then
+    return 0
+  fi
+  err "restic snapshot is stale: ${age}h > ${max_hours}h. That is a finding."
+  return 1
+}
+
+# Escape text for an XML text node. Ampersand first.
+xml_escape() {
+  local s="${1:-}"
+  s="${s//&/&amp;}"
+  s="${s//</&lt;}"
+  s="${s//>/&gt;}"
+  s="${s//\"/&quot;}"
+  s="${s//\'/&apos;}"
+  printf '%s' "$s"
 }
 
 parse_args() {

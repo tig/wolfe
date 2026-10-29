@@ -15,7 +15,7 @@ It is an overlay. The tenets, the handbook shape, backups, the edge allowlist, a
 
 ## Bind it
 
-Keep `MODULES='community'` in `site/site.env`. Copy keys from `site.env.example` in this directory into the bound contract, or let a dry run source this example.
+Keep `MODULES='community'` in `site/site.env`. Copy keys from `site.env.example` in this directory into the bound contract. A bound `site/site.env` wins. The example only fills keys you left empty.
 
 Set `WIKI_ENABLED=0` if you do not run a wiki.
 
@@ -28,7 +28,7 @@ Set `MAINTENANCE_HOOK` to `modules/community/tools/maintenance` (absolute path o
 | `tools/phpbb-upgrade` | Pinned phpBB upgrade. |
 | `tools/mediawiki-upgrade` | Pinned MediaWiki upgrade. Skips if the wiki is off. |
 | `tools/maintenance` | phpBB `board_disable` and a wiki lock file. |
-| `tools/sitemap-phpbb` | Public-topic sitemap. |
+| `tools/sitemap-phpbb` | Public-topic sitemap. Topics use the same GUESTS and BOTS `f_read` filter as forums. |
 | `tools/sitemap-mediawiki` | Public-page sitemap. |
 | `tools/robots` | `robots.txt` into each enabled docroot. |
 

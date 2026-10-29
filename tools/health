@@ -5,7 +5,8 @@ usage() {
 Usage: tools/health
 
 Prints URL status, disk, load, restic snapshot age, and installer-path checks.
-Read-only. No --yes.
+Read-only. No --yes. Exits non-zero when the newest snapshot is older
+than RESTIC_MAX_AGE_HOURS, or when an installer path returns 200.
 EOF
 }
 
@@ -13,6 +14,8 @@ EOF
 source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
 parse_args "$@"
 load_site
+
+findings=0
 
 log "site: ${SITE_NAME:-unbound}"
 log "domain: ${SITE_DOMAIN:-unbound}"
@@ -30,6 +33,7 @@ for url in ${HEALTH_URLS:-}; do
     code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -I "$local_url" || true)"
     if [[ "$code" == "200" ]]; then
       err "installer path $local_url returned 200. That is a finding."
+      findings=1
     else
       log "installer path $local_url -> $code"
     fi
@@ -66,10 +70,14 @@ fi
 if command -v restic >/dev/null 2>&1 && [[ -n "${RESTIC_REPOSITORY:-}" ]] && ! is_placeholder "${RESTIC_REPOSITORY}"; then
   if [[ -n "${RESTIC_PASSWORD:-}" ]]; then
     latest="$(restic snapshots --latest 1 --json 2>/dev/null | sed -n 's/.*"time":"\([^"]*\)".*/\1/p' | head -n 1 || true)"
-    log "restic latest: ${latest:-unavailable}"
+    if ! report_snapshot_age "$latest" "${RESTIC_MAX_AGE_HOURS:-36}"; then
+      findings=1
+    fi
   else
     log "restic: repository is set; export RESTIC_PASSWORD from ${RESTIC_PASSWORD_ITEM:-the vault} to check age."
   fi
 else
   log "restic: not checked."
 fi
+
+exit "$findings"

@@ -24,7 +24,7 @@ The restic password and the object-store keys must exist in the community vault,
 - Automatic: at least daily, from a systemd timer on the origin. Editing the repo copy of the script does nothing until you install it.
 - Oldest snapshot we will still call "current" during a weekday glance: `RESTIC_MAX_AGE_HOURS` (36 hours in the example contract).
 - Forget policy (example): `--keep-daily 7 --keep-weekly 4 --keep-monthly 6 --keep-yearly 2`. Adjust here if you change it, and change the restic `forget` flags in the same pull request.
-- After backup: `restic check --read-data-subset=5%`.
+- After backup: `restic check --read-data-subset=5%`. A failed check fails the job and pings the dead-man switch as `FAIL`.
 
 ## Dead-man switch
 

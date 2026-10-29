@@ -75,7 +75,7 @@ SSH keys, API tokens, database passwords, restic passwords, and registrar logins
 4. Wait if the work is destructive or outward-facing.
 5. Execute on a branch.
 6. Update the handbook in the same change if reality moved. A validated live-config change that never lands in git is a continuity failure. The next rebuild cannot reproduce it.
-7. Run `./tools/integrity-scan`. If it fails, you are not done.
+7. Run `./tests/run.sh` and `./tools/integrity-scan`. If either fails, you are not done.
 8. Open a pull request.
 
 Do not add services, sidecars, or "while I'm here" features. A Linux host, a web stack, an optional database, a firewall, Cloudflare at the edge, and restic to S3-compatible storage are the system. Application software lives in a module. Everything else is an instance choice and belongs in that instance's handbook, not in Wolfe core.

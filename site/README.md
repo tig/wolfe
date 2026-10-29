@@ -29,7 +29,7 @@ The human, or a vault CLI on the host, resolves the item at run time.
 
 `MODULES=''` is a generic VPS. The core tools still work.
 
-Copy keys from `modules/<name>/site.env.example` into your bound `site/site.env`, or let the tools source the module example on a dry run when no bound fragment exists.
+Copy keys from `modules/<name>/site.env.example` into your bound `site/site.env`. When the instance is bound, tools fill only keys that are still empty from the module example. They do not overwrite `FORUM_DOMAIN`, `WEB_ROOT`, or database names you already set. When the instance is unbound, a dry run sources the example in full.
 
 ## Pins
 

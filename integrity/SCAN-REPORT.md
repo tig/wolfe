@@ -1,14 +1,17 @@
 # Integrity scan report
 
-Ran at 2026-10-29T19:44:25Z on the working tree.
+Ran at 2026-10-29T19:57:00Z on the working tree.
 
-gitleaks: clean
+gitleaks working tree: clean
+gitleaks git history: clean
 
 ## Results
 
-- ok: gitleaks clean
+- ok: gitleaks working tree clean
+- ok: gitleaks git history clean
 - ok: proof-of-concept identifier absent
 - ok: scrubbed-export placeholders absent
+- ok: git history has no scrubbed identifiers
 - ok: no email addresses
 - ok: no non-documentation IPv4 addresses
 - ok: no PEM private keys

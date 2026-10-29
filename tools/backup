@@ -160,6 +160,7 @@ restic forget --prune \
   --keep-weekly "${RESTIC_KEEP_WEEKLY:-4}" \
   --keep-monthly "${RESTIC_KEEP_MONTHLY:-6}" \
   --keep-yearly "${RESTIC_KEEP_YEARLY:-2}" || true
-restic check --read-data-subset=5% || log "WARN: restic check reported issues"
+# A failed check must fail the job. The EXIT trap writes FAIL and pings /fail.
+restic check --read-data-subset=5%
 restic snapshots --latest 1
 log "backup work dir $work can be removed after restic reports the snapshot."
