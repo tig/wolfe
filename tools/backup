@@ -77,20 +77,39 @@ fi
 
 require_yes
 work="${BACKUP_WORK_DIR:-/var/lib/wolfe/backup-work}/$(date -u +%Y%m%dT%H%M%SZ)"
+status_file="${STATE_DIR:-/var/lib/wolfe}/backup-status"
 
 if [[ "$DRY_RUN" == "1" ]]; then
   log "dry-run: dump ${DB_NAME:-none} and extra dbs (${EXTRA_DBS:-none}) into $work"
-  log "dry-run: restic backup $work ${WEB_ROOT:-} ${BACKUP_PATHS:-}"
+  log "dry-run: restic backup $work ${WEB_ROOT:-} ${BACKUP_PATHS:-} etc=${BACKUP_INCLUDE_ETC:-0}"
+  log "dry-run: write $status_file; ping HEALTHCHECK_URL if set"
   exit 0
 fi
 
 need_cmd restic
 restic_env
-mkdir -p "$work"
+mkdir -p "$work" "$(dirname "$status_file")"
+
+finish() {
+  local rc=$?
+  if [[ $rc -eq 0 ]]; then
+    printf 'OK   %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$status_file"
+  else
+    printf 'FAIL %s (exit %s)\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$rc" >"$status_file"
+  fi
+  if [[ -n "${HEALTHCHECK_URL:-}" ]]; then
+    if [[ $rc -eq 0 ]]; then
+      curl -fsS -m 15 "$HEALTHCHECK_URL" >/dev/null 2>&1 || true
+    else
+      curl -fsS -m 15 "${HEALTHCHECK_URL}/fail" >/dev/null 2>&1 || true
+    fi
+  fi
+}
+trap finish EXIT
 
 if [[ -n "${DB_NAME:-}" ]] && ! is_placeholder "$DB_NAME"; then
   resolve_secret DB_PASSWORD DB_PASSWORD_ITEM
-  dump_db "$DB_USER" "$DB_NAME" "$DB_PASSWORD" "$work/primary.sql"
+  dump_db "$DB_USER" "$DB_NAME" "$DB_PASSWORD" "$work/primary.sql.gz"
 fi
 
 for prefix in ${EXTRA_DBS:-}; do
@@ -101,13 +120,32 @@ for prefix in ${EXTRA_DBS:-}; do
   require_value "$name_var" "${!name_var:-}"
   require_value "$user_var" "${!user_var:-}"
   resolve_secret "$pass_var" "$item_var"
-  dump_db "${!user_var}" "${!name_var}" "${!pass_var}" "$work/${prefix}.sql"
+  dump_db "${!user_var}" "${!name_var}" "${!pass_var}" "$work/${prefix}.sql.gz"
 done
+
+manifest="$work/rebuild"
+mkdir -p "$manifest/ssh"
+apt-mark showmanual >"$manifest/packages-manual.txt" 2>/dev/null || true
+dpkg --get-selections >"$manifest/dpkg-selections.txt" 2>/dev/null || true
+if [[ -f /root/.ssh/authorized_keys ]]; then
+  cp /root/.ssh/authorized_keys "$manifest/ssh/root.authorized_keys"
+fi
+if [[ -n "${SSH_USER:-}" && -f "/home/${SSH_USER}/.ssh/authorized_keys" ]]; then
+  cp "/home/${SSH_USER}/.ssh/authorized_keys" "$manifest/ssh/${SSH_USER}.authorized_keys"
+fi
 
 paths=("$work")
 [[ -n "${WEB_ROOT:-}" ]] && paths+=("$WEB_ROOT")
 # shellcheck disable=SC2206
 [[ -n "${BACKUP_PATHS:-}" ]] && paths+=($BACKUP_PATHS)
+if [[ "${BACKUP_INCLUDE_ETC:-0}" == "1" ]]; then
+  paths+=(/etc)
+fi
+
+exclude_flags=()
+for pat in ${BACKUP_EXCLUDES:-}; do
+  exclude_flags+=(--exclude "$pat")
+done
 
 if [[ -f "$SITE_ENV" ]]; then
   cp "$SITE_ENV" "$work/site.env"
@@ -116,6 +154,12 @@ if [[ -f "$PINS_ENV" ]]; then
   cp "$PINS_ENV" "$work/pins.env"
 fi
 
-restic backup "${paths[@]}"
+restic backup "${exclude_flags[@]}" "${paths[@]}"
+restic forget --prune \
+  --keep-daily "${RESTIC_KEEP_DAILY:-7}" \
+  --keep-weekly "${RESTIC_KEEP_WEEKLY:-4}" \
+  --keep-monthly "${RESTIC_KEEP_MONTHLY:-6}" \
+  --keep-yearly "${RESTIC_KEEP_YEARLY:-2}" || true
+restic check --read-data-subset=5% || log "WARN: restic check reported issues"
 restic snapshots --latest 1
 log "backup work dir $work can be removed after restic reports the snapshot."

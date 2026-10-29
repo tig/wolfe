@@ -28,6 +28,11 @@ Record the mount that holds the docroot and the database, and the systemd units 
 
 - Data mount: `<DATA_MOUNT>` with at least enough headroom that a database dump plus an archive extract cannot fill it.
 - Must be running: `<web-unit>`, `<runtime-unit>`, `<db-unit-or-none>`.
+- Backup timer: `<backup-timer>`. Confirm `systemctl list-timers` shows it, and that `${STATE_DIR}/backup-status` is `OK` and fresh.
+
+If you switched from mod_php to PHP-FPM, the FPM pool has its own `upload_max_filesize` and `post_max_size`. The Apache `php.ini` no longer applies. Phone photos will fail instantly at the old 2M default.
+
+A short `~/AGENTS.md` on each admin account that points at the on-box clone of this repo is enough for agents that only open the home directory. Do not invent a second copy of the handbook there.
 
 ## First-time bootstrap (shape only)
 

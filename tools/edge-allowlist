@@ -30,6 +30,8 @@ log "ssh: port ${SSH_PORT:-22} from ${ADMIN_CIDR:-<ADMIN_CIDR>}"
 
 if [[ "$DRY_RUN" == "1" ]]; then
   log "dry-run: fetch ranges and print $FORMAT rules. --yes applies them."
+  log "before --yes on a live host: start a 10-minute dead-man that disables the firewall if you lock yourself out."
+  log "example: systemd-run --unit=wolfe-ufw-deadman --on-active=10m /usr/sbin/ufw disable"
 fi
 
 if ! command -v curl >/dev/null 2>&1; then

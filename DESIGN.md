@@ -32,6 +32,8 @@ Handoff is a continuity problem. More than one admin must be able to get in. Bre
 
 The pain is bigger than one application. The forum stack taught the shape. The shape is a VPS.
 
+A later, scrubbed reading of that instance's runbooks added failure modes I would not have invented: a CDN cache rule that leaked one member's HTML chrome to the next visitor; phpBB sessions that die when `ip_check` sees rotating edge addresses; a scrape farm that wedges PHP while fail2ban stays at zero; installer paths that a vhost "allow all" reopens; restic that needs a dead-man ping or it fails quietly; object-storage FUSE mounts that turn a topic page into a twenty-second `stat()`; a distro rclone that cannot write and retries millions of times; DNS-01 still aimed at a nameserver that is no longer authoritative. Those lessons live in the handbook and the community module. They did not become a second `ops/` tree.
+
 ## The architecture
 
 Wolfe has a generic core and optional modules. Each layer has one job. An agent should be able to name the layer it is in.

@@ -2,7 +2,7 @@
 
 This repository is public. Every branch is visible.
 
-`scan.sh` (also `tools/integrity-scan`) looks for secrets and for private-instance identifiers. Run it before every push.
+`scan.sh` (also `tools/integrity-scan`) looks for secrets, for private-instance identifiers, and for leftovers from the scrubbed export used to teach Wolfe. Run it before every push. The export needles are assembled in the script so this file does not list them.
 
 ```bash
 ./tools/integrity-scan

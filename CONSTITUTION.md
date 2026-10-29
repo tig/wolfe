@@ -44,6 +44,8 @@ The live handbook is git. Scripts are git. Pins are git.
 
 Do not "just fix it on the server." If the host must change now, the same change updates the handbook and lands through a pull request. An exception for a true outage still gets a pull request before the session ends.
 
+Uncommitted production-only config is a continuity failure. Apache drop-ins, PHP pool files, systemd units, firewall rules, and CDN inventories must be described in git after they are proven, even when the secret values stay in the vault.
+
 ## What this constitution is not
 
 It is not a license to stall. Read-only is the default, not the destination.

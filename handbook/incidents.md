@@ -26,6 +26,18 @@ If the origin is sick but yours (disk full, runtime wedged, certificate expired)
 
 If the edge is the problem (DNS, SSL mode, a bad cache rule), fix the edge and leave the origin alone.
 
+## Known failure modes (do not rediscover these)
+
+**Scrape flood.** Origin load spikes, PHP children pin, HTTPS accept queue fills, public TTFB goes multi-second. fail2ban stays at zero bans. Per-IP rate limits barely move the needle. Challenge the expensive paths at the CDN, or turn on Under Attack, then step down. See `handbook/edge.md`.
+
+**Cached HTML leak.** A member sees another member's name, inbox badge, or notification chrome on a public page, but cannot act as them. Bypass cache for that path. Purge the zone. Do not "fix" it by caching harder.
+
+**Silent session deaths.** Logins fail with "form invalid," or members drop while posting, especially behind a CDN. Check `form_token_sid_guests`, `ip_check`, `browser_check`, `server_name`, and whether the origin sees real client IPs. See `modules/community/playbooks/sessions-and-cookies.md`.
+
+**Missed backup.** Status file says `FAIL`, or the newest snapshot is older than `RESTIC_MAX_AGE_HOURS`. That is an incident even if the site is up.
+
+**Installer 200.** An overlay upgrade left `/install/` or `/mw-config/` reachable. 403 it now. Then write it down.
+
 ## Outward-facing
 
 Do not post a public status note, mail the users, or email a vendor until a human says yes. Draft the text. Wait.

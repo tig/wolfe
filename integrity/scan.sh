@@ -58,6 +58,30 @@ else
   ok "proof-of-concept identifier absent"
 fi
 
+# Scrubbed-export leftovers. Assembled so this file does not contain the literals.
+export_needles=()
+_n="ac"; export_needles+=("${_n}me")
+_n="Example"; export_needles+=("${_n}Community")
+_n="<PER"; export_needles+=("${_n}SON_")
+_n="onmicro"; export_needles+=("${_n}soft")
+_n="chas"; export_needles+=("${_n}sis")
+_n="Schalt"; export_needles+=("${_n}plan")
+export_hits=""
+for needle in "${export_needles[@]}"; do
+  for f in "${files[@]}"; do
+    rel="${f#"$ROOT"/}"
+    [[ "$rel" == integrity/scan.sh ]] && continue
+    if grep -F -i -n -- "$needle" "$f" >/dev/null 2>&1; then
+      export_hits+="$rel:$needle "
+    fi
+  done
+done
+if [[ -n "$export_hits" ]]; then
+  fail "scrubbed-export placeholder present in: $export_hits"
+else
+  ok "scrubbed-export placeholders absent"
+fi
+
 # --- emails ------------------------------------------------------------
 # Allow none. example.org addresses would be the only exception we would add.
 email_hits="$(grep -R -I -n -E --exclude-dir=.git --exclude=SCAN-REPORT.md \

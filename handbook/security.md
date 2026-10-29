@@ -18,15 +18,39 @@ Cloudflare publishes the ranges at `https://www.cloudflare.com/ips-v4` and `http
 
 Re-fetch the lists when Cloudflare announces a change. Do not hard-code a range you copied a year ago.
 
-If you must hit the origin yourself, do it over SSH, or from a path that already goes through Cloudflare.
+Before you apply a new allowlist, start a short dead-man timer that disables the firewall if you lock yourself out (for example `systemd-run --on-active=10m` calling `ufw disable`). Confirm SSH in a *new* session and confirm the site still loads through the CDN. Then cancel the timer.
+
+Keep the web server's trusted-proxy list on the same ranges. If Apache or nginx trusts `CF-Connecting-IP` from the whole internet, clients can spoof. If it trusts none of them, every IP-based feature sees rotating edge addresses and session checks start lying.
+
+If you must hit the origin yourself, do it over SSH, or from a path that already goes through Cloudflare. Emergency lockout recovery is the provider web console, then `ufw disable`.
+
+Leaving SSH open to the world is an instance choice, not the default. Record it here if you do it, and say why.
 
 ## Installer paths
 
 After install, a web installer is an attack surface.
 
-Deny those paths in the web server, and delete or move the installer directory after the CLI updater has run. Record the paths in `INSTALLER_PATHS`. The community module uses `install/` and `mw-config/`.
+Deny those paths in the web server, and delete or move the installer directory after the CLI updater has run. Record the paths in `INSTALLER_PATHS`. The community module uses `install/`, `install_/`, and `mw-config/`.
+
+The deny must *and* with the vhost, not *or*. A vhost that says "allow all" will otherwise reopen the installer. `tools/installer-block` prints a snippet with that merge.
+
+Verify from the origin with a `Host` header, not only from the public URL:
+
+```bash
+curl -sk -o /dev/null -w '%{http_code}\n' -H 'Host: example.org' https://127.0.0.1/install/
+```
+
+Expect 403 or 404. A 200 after an overlay upgrade is an incident.
 
 `robots.txt` may also list those paths as `Disallow`. That is not access control. It is a courtesy to crawlers.
+
+## Origin vs edge abuse
+
+fail2ban on SSH is useful. fail2ban on a tiny error-log regex is not a request-rate shield. A distributed scrape of HTML will not trip it.
+
+Block floods at the CDN first. An origin PHP pool cannot absorb tens of requests per second of 403s. Origin deny lists are defense in depth.
+
+See `handbook/edge.md` and, for phpBB, `modules/community/playbooks/abuse.md`.
 
 ## Runtime hardening
 

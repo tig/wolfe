@@ -56,6 +56,13 @@ if command -v systemctl >/dev/null 2>&1; then
   done
 fi
 
+status_file="${STATE_DIR:-/var/lib/wolfe}/backup-status"
+if [[ -f "$status_file" ]]; then
+  log "backup-status: $(head -n 1 "$status_file")"
+else
+  log "backup-status: missing"
+fi
+
 if command -v restic >/dev/null 2>&1 && [[ -n "${RESTIC_REPOSITORY:-}" ]] && ! is_placeholder "${RESTIC_REPOSITORY}"; then
   if [[ -n "${RESTIC_PASSWORD:-}" ]]; then
     latest="$(restic snapshots --latest 1 --json 2>/dev/null | sed -n 's/.*"time":"\([^"]*\)".*/\1/p' | head -n 1 || true)"

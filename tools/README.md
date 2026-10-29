@@ -13,6 +13,7 @@ If a value still looks like `<PLACEHOLDER>`, the tool exits.
 | `backup` | Dump, restic backup, list, restore to a target. |
 | `rebuild` | Origin rebuild skeleton. Does not call a cloud API. |
 | `edge-allowlist` | Cloudflare IP ranges into firewall rules. |
+| `installer-block` | Print an Apache or nginx deny for installer paths. |
 | `integrity-scan` | Secret and identifier scan. |
 
 Application upgrades and sitemaps live in the module that owns the application.

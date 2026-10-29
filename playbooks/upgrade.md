@@ -8,9 +8,9 @@ The core does not know your application. A module does. If `MODULES` lists `comm
 
 1. Stay read-only until the plan is approved.
 2. Read the vendor notes for the exact version in the pin file.
-3. Confirm the SHA-256 is a real hex digest copied from the vendor download page, not a placeholder.
-4. Confirm a restic snapshot newer than `RESTIC_MAX_AGE_HOURS`, or take one (`playbooks/backup.md`).
-5. Name the rollback: restore that snapshot, keep the old `WEB_ROOT` aside until you say the site is good.
+3. Confirm the SHA-256 is a real hex digest copied from the vendor download page, not a placeholder. Do not pin a release the vendor has withdrawn.
+4. Confirm a restic snapshot newer than `RESTIC_MAX_AGE_HOURS`, or take one (`playbooks/backup.md`). Keep a local tarball of the trees you will overlay.
+5. Name the rollback: restore that snapshot or the tarball, keep the old `WEB_ROOT` aside until you say the site is good.
 
 ## Run
 

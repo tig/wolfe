@@ -12,6 +12,6 @@ Read the matching handbook page first. Then follow the playbook. Then run the to
 | `restore-drill.md` | `tools/backup --list`, then a restore into a scratch directory |
 | `rebuild.md` | `tools/rebuild` |
 
-Application-specific playbooks live under `modules/<name>/playbooks/`.
+Application-specific playbooks live under `modules/<name>/playbooks/` (community: phpBB/MediaWiki upgrade, discoverability, sessions, abuse).
 
 `--dry-run` is how you rehearse. `--yes` is how you change the origin. The constitution requires a yes from a human for the second one.

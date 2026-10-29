@@ -3,8 +3,10 @@ usage() {
   cat <<'EOF'
 Usage: modules/community/tools/sitemap-phpbb [--dry-run|--yes]
 
-Write FORUM_DOCROOT/sitemap.xml for publicly visible topics.
-Needs a database password in FORUM_DB_PASSWORD (from the vault).
+Write FORUM_DOCROOT/sitemap.xml (and shards) for publicly readable
+forums and topics. A forum is public when it is postable, has no
+password, and both GUESTS (group 1) and BOTS (group 6) have f_read.
+Needs FORUM_DB_PASSWORD from the vault.
 EOF
 }
 
@@ -19,28 +21,52 @@ require_value "FORUM_DB_NAME" "${FORUM_DB_NAME:-}"
 require_value "FORUM_DB_USER" "${FORUM_DB_USER:-}"
 prefix="${FORUM_TABLE_PREFIX:-phpbb_}"
 dest="${FORUM_DOCROOT}/sitemap.xml"
+shard_size="${SITEMAP_SHARD_SIZE:-40000}"
+guest_id="${PHPBB_GUESTS_GROUP:-1}"
+bots_id="${PHPBB_BOTS_GROUP:-6}"
 
+# Public = GUESTS and BOTS both have f_read, forum_type=1, no password.
+# Do not hard-code private forum ids. ACL is the source of truth.
 sql=$(cat <<SQL
-SELECT t.topic_id, t.topic_last_post_time
+SELECT 'forum' AS kind, f.forum_id AS id, 0 AS extra, f.forum_last_post_time AS ts
+FROM ${prefix}forums f
+WHERE f.forum_type = 1
+  AND f.forum_password = ''
+  AND EXISTS (
+    SELECT 1 FROM ${prefix}acl_groups g
+    JOIN ${prefix}acl_roles_data rd ON rd.role_id = g.auth_role_id
+    JOIN ${prefix}acl_options o ON o.auth_option_id = rd.auth_option_id
+    WHERE g.forum_id = f.forum_id AND g.group_id = ${guest_id}
+      AND o.auth_option = 'f_read' AND rd.auth_setting = 1
+  )
+  AND EXISTS (
+    SELECT 1 FROM ${prefix}acl_groups g
+    JOIN ${prefix}acl_roles_data rd ON rd.role_id = g.auth_role_id
+    JOIN ${prefix}acl_options o ON o.auth_option_id = rd.auth_option_id
+    WHERE g.forum_id = f.forum_id AND g.group_id = ${bots_id}
+      AND o.auth_option = 'f_read' AND rd.auth_setting = 1
+  )
+UNION ALL
+SELECT 'topic', t.topic_id, t.topic_posts_approved, t.topic_last_post_time
 FROM ${prefix}topics t
 JOIN ${prefix}forums f ON f.forum_id = t.forum_id
 WHERE t.topic_visibility = 1
+  AND t.topic_moved_id = 0
   AND f.forum_password = ''
   AND f.forum_type = 1
-ORDER BY t.topic_last_post_time DESC
-LIMIT 50000;
+ORDER BY ts DESC;
 SQL
 )
 
-log "sitemap -> $dest"
-log "public topics on ${FORUM_DOMAIN}"
+log "sitemap -> $dest (shard size $shard_size)"
+log "public forums and topics on ${FORUM_DOMAIN}"
 
 require_yes
 
 if [[ "$DRY_RUN" == "1" ]]; then
   log "dry-run SQL:"
   log "$sql"
-  log "dry-run: write $dest"
+  log "dry-run: write $dest and shards of $shard_size URLs"
   exit 0
 fi
 
@@ -49,17 +75,73 @@ resolve_secret FORUM_DB_PASSWORD FORUM_DB_PASSWORD_ITEM
 tmp="$(mktemp)"
 printf '%s\n' "$sql" | mysql_cmd "$FORUM_DB_USER" "$FORUM_DB_NAME" "$FORUM_DB_PASSWORD" >"$tmp"
 
-{
-  printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
-  printf '%s\n' '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-  while read -r topic_id last_post; do
-    [[ -z "$topic_id" ]] && continue
-    lastmod="$(date -u -d "@${last_post:-0}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
-    printf '  <url><loc>https://%s/viewtopic.php?t=%s</loc><lastmod>%s</lastmod></url>\n' \
-      "$FORUM_DOMAIN" "$topic_id" "$lastmod"
-  done <"$tmp"
-  printf '%s\n' '</urlset>'
-} >"$dest"
+urls="$(mktemp)"
+ppp="${PHPBB_POSTS_PER_PAGE:-30}"
+while read -r kind id extra ts; do
+  [[ -z "$kind" ]] && continue
+  lastmod="$(date -u -d "@${ts:-0}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if [[ "$kind" == "forum" ]]; then
+    printf 'https://%s/viewforum.php?f=%s\t%s\n' "$FORUM_DOMAIN" "$id" "$lastmod"
+  else
+    printf 'https://%s/viewtopic.php?t=%s\t%s\n' "$FORUM_DOMAIN" "$id" "$lastmod"
+    if [[ "${extra:-0}" -gt "$ppp" ]]; then
+      start="$ppp"
+      while [[ "$start" -lt "$extra" ]]; do
+        printf 'https://%s/viewtopic.php?t=%s&start=%s\t%s\n' "$FORUM_DOMAIN" "$id" "$start" "$lastmod"
+        start=$((start + ppp))
+      done
+    fi
+  fi
+done <"$tmp" >"$urls"
 
-rm -f "$tmp"
-log "wrote $dest"
+total="$(wc -l <"$urls")"
+shards=$(( (total + shard_size - 1) / shard_size ))
+[[ "$shards" -lt 1 ]] && shards=1
+
+write_urlset() {
+  local out="$1"
+  local src="$2"
+  {
+    printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
+    printf '%s\n' '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    while IFS=$'\t' read -r loc lastmod; do
+      [[ -z "$loc" ]] && continue
+      printf '  <url><loc>%s</loc><lastmod>%s</lastmod></url>\n' "$loc" "$lastmod"
+    done <"$src"
+    printf '%s\n' '</urlset>'
+  } >"$out"
+}
+
+if [[ "$shards" -eq 1 ]]; then
+  write_urlset "$dest" "$urls"
+else
+  {
+    printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
+    printf '%s\n' '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    n=1
+    while [[ "$n" -le "$shards" ]]; do
+      printf '  <sitemap><loc>https://%s/sitemap-%s.xml</loc></sitemap>\n' "$FORUM_DOMAIN" "$n"
+      n=$((n + 1))
+    done
+    printf '%s\n' '</sitemapindex>'
+  } >"$dest"
+  shard_n=1
+  : >"$urls.chunk"
+  count=0
+  while IFS=$'\t' read -r loc lastmod; do
+    printf '%s\t%s\n' "$loc" "$lastmod" >>"$urls.chunk"
+    count=$((count + 1))
+    if [[ "$count" -ge "$shard_size" ]]; then
+      write_urlset "${FORUM_DOCROOT}/sitemap-${shard_n}.xml" "$urls.chunk"
+      shard_n=$((shard_n + 1))
+      : >"$urls.chunk"
+      count=0
+    fi
+  done <"$urls"
+  if [[ "$count" -gt 0 ]]; then
+    write_urlset "${FORUM_DOCROOT}/sitemap-${shard_n}.xml" "$urls.chunk"
+  fi
+fi
+
+rm -f "$tmp" "$urls" "$urls.chunk"
+log "wrote $dest ($total URLs, $shards shard(s))"

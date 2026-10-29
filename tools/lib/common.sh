@@ -153,9 +153,9 @@ dump_db() {
   local password="$3"
   local dest="$4"
   if command -v mariadb-dump >/dev/null 2>&1; then
-    mariadb-dump -u "$user" -p"$password" --single-transaction --quick "$name" >"$dest"
+    mariadb-dump -u "$user" -p"$password" --single-transaction --quick --no-tablespaces "$name" | gzip -1 >"$dest"
   else
-    mysqldump -u "$user" -p"$password" --single-transaction --quick "$name" >"$dest"
+    mysqldump -u "$user" -p"$password" --single-transaction --quick --no-tablespaces "$name" | gzip -1 >"$dest"
   fi
 }
 

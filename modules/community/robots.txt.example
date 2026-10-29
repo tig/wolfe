@@ -1,4 +1,5 @@
 # Deployed by modules/community/tools/robots.
+# Do not set Crawl-delay under User-agent: *.
 User-agent: *
 Allow: /
 

@@ -34,12 +34,26 @@ The upgrade tool:
 4. Extracts over the board while keeping `config.php`, `files/`, `images/`, `store/`, and `ext/`.
 5. Runs the phpBB CLI updater (`bin/phpbbcli.php db:migrate`).
 6. Removes `install/` from the docroot.
+7. Does not overlay `ext/` or custom styles.
+
+`db:migrate` can clobber CDN-safe session settings. Re-apply the list in `sessions-and-cookies.md` after every migrate.
+
+Confirm installer paths 403:
+
+```bash
+./tools/installer-block
+curl -sk -o /dev/null -w '%{http_code}\n' -H 'Host: forums.example.org' https://127.0.0.1/install/
+```
+
+Some phpBB trains add an "AI Crawlers" group and hide the board from those bots. If the edge is set to allow well-behaved assistant crawlers, give that group the same forum view rights as Bots.
 
 ## After
 
 1. Open a logged-out forum index and one topic.
-2. Open ACP and confirm the version matches the pin.
-3. Update `handbook/upgrades.md` with the live version.
-4. Commit the pin and the handbook change on the same branch.
+2. Log in. If you see "form invalid," read `sessions-and-cookies.md`.
+3. Post a test message. Upload one file if the board accepts uploads.
+4. Open ACP and confirm the version matches the pin.
+5. Update `handbook/upgrades.md` with the live version.
+6. Commit the pin and the handbook change on the same branch.
 
 If the CLI updater fails, leave maintenance on, restore the snapshot, and write an incident.

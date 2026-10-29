@@ -22,6 +22,19 @@ This repository is the brain. The scripts under `tools/` (and a module's `tools/
 4. `handbook/architecture.md`.
 5. Only the handbook pages, playbooks, and module files the current task needs.
 
+## First: are you already on the origin?
+
+Agent sessions often start on the live host. Check before you SSH, and before you claim you cannot deploy.
+
+```bash
+hostname; whoami; id
+test -d "${WEB_ROOT:-/var/www/app}" && echo "web root: present"
+```
+
+If the hostname matches `handbook/host.md` and the web root is here, you are on the origin. Edit locally. Do not SSH to `<SERVER_IP>` and treat a permission error as "prod is unreachable."
+
+If the hostname is something else and the web root is missing, you are on a workstation. Then SSH.
+
 ## Default stance
 
 You start in read-only mode.
@@ -61,7 +74,7 @@ SSH keys, API tokens, database passwords, restic passwords, and registrar logins
 3. Propose a plan that names the playbook and the tool.
 4. Wait if the work is destructive or outward-facing.
 5. Execute on a branch.
-6. Update the handbook in the same change if reality moved.
+6. Update the handbook in the same change if reality moved. A validated live-config change that never lands in git is a continuity failure. The next rebuild cannot reproduce it.
 7. Run `./tools/integrity-scan`. If it fails, you are not done.
 8. Open a pull request.
 

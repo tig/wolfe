@@ -17,7 +17,7 @@ If you cannot name two, you do not have continuity. You have a hobby with a sing
 
 ## Vault
 
-The vault is community-owned. A personal vault is a continuity bug.
+The vault is community-owned. A personal vault, or a vault on one person's company tenant, is a continuity bug.
 
 Items the next admin must find by name, not by memory:
 
@@ -26,6 +26,7 @@ Items the next admin must find by name, not by memory:
 - restic repository password and S3 keys.
 - Cloudflare login, or an API token limited to the zone, if you use one.
 - Registrar login for `example.org`.
+- An out-of-band recovery mailbox that does **not** depend only on `@example.org` mail. If the domain dies, you still need a way into the registrar.
 - The application's own founder or bureaucrat account.
 
 Values never enter this repository. Names can, as `<VAULT_NAME>/<ITEM_NAME>`.
@@ -41,6 +42,12 @@ Split that material so that `k` of `n` admins are needed to reconstruct it. Two-
 - Last tested: `<YYYY-MM-DD>`.
 
 The point is two-sided. No single person is the bottleneck. No single person can act alone on the nuclear options.
+
+Do not undo this by adding the reserve admins' SSH keys to the origin, or by granting them standing vault membership "for convenience." That is standing root. Their host access comes through break-glass.
+
+Rehearse it about once a year: two holders combine shares, decrypt, and confirm they can SSH and open the vault. An unrehearsed bundle is not continuity. Rebuild the bundle whenever the live SSH key, the restic password, or the vault recovery kit changes.
+
+Any scheme that lets two reserves recover without you also lets those two collude while you are alive. That residual is irreducible. Logging (vault activity, `auth.log`, cloud audit) is the mitigation.
 
 ## Git
 

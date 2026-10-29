@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: tools/installer-block [--format apache|nginx]
+
+Print a web-server snippet that 403s installer paths.
+The deny must AND with the vhost. A vhost "allow all" otherwise
+reopens /install after an overlay upgrade.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
+
+FORMAT="apache"
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --format) FORMAT="${2:-apache}"; shift 2 ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+parse_args "${args[@]:-}"
+load_site
+
+paths="${INSTALLER_PATHS:-install/ install_/ mw-config/}"
+log "installer paths: $paths"
+log "verify: curl -sk -o /dev/null -w '%{http_code}\\n' -H 'Host: ${SITE_DOMAIN:-example.org}' https://127.0.0.1/install/"
+
+if [[ "$FORMAT" == "nginx" ]]; then
+  cat <<'NGX'
+# Wolfe installer block. Include inside the server { } that serves the app.
+location ~* ^/(install_|install(/develop)?|mw-config)(/|$) {
+    return 403;
+}
+NGX
+else
+  cat <<'APR'
+# Wolfe installer block. Enable as a global conf so every vhost inherits it.
+# AuthMerging And: a vhost "Require all granted" must AND with this deny.
+<IfModule mod_authz_core.c>
+    <LocationMatch "(?i)^/(install_|install(/develop)?|mw-config)(/|$)">
+        AuthMerging And
+        Require all denied
+    </LocationMatch>
+</IfModule>
+APR
+fi

@@ -11,6 +11,7 @@ It is an overlay. The tenets, the handbook shape, backups, the edge allowlist, a
 - Forum and wiki maintenance through the core `MAINTENANCE_HOOK`.
 - Public sitemaps and `robots.txt`.
 - Example prompts a forum admin actually says.
+- Session, cookie, scrape-flood, and object-storage lessons that a generic VPS does not need.
 
 ## Bind it
 

@@ -73,3 +73,23 @@ Read-only. Look at phpBB's built-in anti-spam settings and recent registration c
 ### "Search engines aren't seeing the wiki."
 
 If the wiki is disabled, say so. Otherwise dry-run the community discoverability playbook.
+
+### "People keep getting logged out while they post."
+
+Read-only first. Open `modules/community/playbooks/sessions-and-cookies.md`. Check `ip_check`, `browser_check`, `form_token_sid_guests`, `server_name`, and whether the origin sees real client IPs. Do not turn on IP pinning behind a CDN.
+
+### "A member saw someone else's name in the header."
+
+Privacy incident. Read `handbook/edge.md` (cached HTML leak). Bypass cache for the application path. Purge the zone. Do not force-cache guest HTML as a fix.
+
+### "The site is crawling. viewtopic is huge."
+
+Flood. Read `modules/community/playbooks/abuse.md`. Look at origin rate and PHP children. Challenge at the CDN or use Under Attack. Do not reboot. Do not add a service.
+
+### "Did last night's backup run?"
+
+Read-only. `tools/health` and `${STATE_DIR}/backup-status`. If the stamp is old or `FAIL`, that is an incident even if the site is up.
+
+### "Uploads from phones fail right after we moved to FPM."
+
+Read-only. Check the *FPM* pool `upload_max_filesize`, not Apache's `php.ini`. The old 2M default fails instantly.

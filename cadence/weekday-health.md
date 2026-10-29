@@ -9,8 +9,8 @@ Then report, in this order, in no more than twelve lines:
 1. Each health URL status and response time.
 2. Disk used on the data mount.
 3. Load average and whether the units in `SYSTEMD_UNITS` (or the defaults) are active.
-4. Age of the newest restic snapshot versus `RESTIC_MAX_AGE_HOURS`.
-5. Whether any path in `INSTALLER_PATHS` is reachable from a public URL (they must not be).
+4. Age of the newest restic snapshot versus `RESTIC_MAX_AGE_HOURS`, and the first line of `${STATE_DIR}/backup-status` if it exists. `FAIL` or a stamp older than the max age is a finding.
+5. Whether any path in `INSTALLER_PATHS` is reachable from a public URL or from `https://127.0.0.1/` with a `Host` header (they must not be).
 
 Do not restart anything. Do not purge caches. Do not "just tidy."
 

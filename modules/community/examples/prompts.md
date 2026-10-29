@@ -17,3 +17,11 @@ Read-only. Look at phpBB's ACP settings and recent registrations in the database
 ## "Search engines aren't seeing the wiki."
 
 If the wiki is disabled, say so. Otherwise run the discoverability playbook in dry-run, check `robots.txt` and `sitemap.xml` on the public hostnames, and check that Cloudflare is not caching an empty sitemap. Wait before writing files.
+
+## "People keep getting logged out."
+
+`playbooks/sessions-and-cookies.md`. Stay read-only until you have the live config values.
+
+## "We're getting hammered on viewtopic."
+
+`playbooks/abuse.md`. Edge first. Origin deny is depth, not the plan.

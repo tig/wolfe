@@ -20,9 +20,11 @@ Never restore over `WEB_ROOT` or the live database as a drill.
    ./tools/backup --restore <SNAPSHOT_ID> --target /var/lib/wolfe/drill --yes
    ```
 
-3. Load the dump into a throwaway database, or grep the dump for a title you know exists.
-4. If you have a scratch vhost, point it at the restored docroot and open one public page.
-5. Delete the scratch database and the scratch directory.
-6. Write the date, the snapshot ID, and what you opened into `handbook/backups.md`.
+3. Confirm each dump is valid gzip and has the table count you expect.
+4. If the snapshot includes `/etc`, confirm the origin certificate (or the equivalent TLS file) restores byte-identical.
+5. Load the dump into a throwaway database, or grep the dump for a title you know exists.
+6. If you have a scratch vhost, point it at the restored docroot and open one public page.
+7. Delete the scratch database and the scratch directory.
+8. Write the date, the snapshot ID, and what you opened into `handbook/backups.md`.
 
 If the restore fails, that is an incident. Fix the backup before you do anything else.

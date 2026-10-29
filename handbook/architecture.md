@@ -26,6 +26,10 @@ The internet may reach Cloudflare. It may not reach the origin.
 
 The origin accepts SSH from `<ADMIN_CIDR>` and HTTP(S) from Cloudflare's published IP ranges. Everything else inbound is denied.
 
+The web server must recover the real client IP from `CF-Connecting-IP`, and only from those ranges. Without that, session binding, fail2ban, and application logs all see rotating edge addresses.
+
+Media on a FUSE or rclone mount is not "just a directory." Page-path `stat()` of a huge flat bucket is an outage waiting to happen. Backups must not follow that mount unless you meant to.
+
 Secrets cross the vault boundary, not the git boundary. Scripts receive a password at run time from a vault item, an environment variable the human exported, or a prompt. They do not read a secret out of this repository.
 
 ## What is in scope

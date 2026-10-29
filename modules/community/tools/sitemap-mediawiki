@@ -27,10 +27,11 @@ page_table="${prefix}page"
 dest="${WIKI_DOCROOT}/sitemap.xml"
 path_prefix="${WIKI_PAGE_PATH:-/wiki/}"
 
+# Main, File, and Category. lastmod is page_touched (revision join is optional).
 sql=$(cat <<SQL
-SELECT page_title, page_touched
+SELECT page_title, page_namespace, page_touched
 FROM ${page_table}
-WHERE page_namespace = 0
+WHERE page_namespace IN (0, 6, 14)
   AND page_is_redirect = 0
 ORDER BY page_touched DESC
 LIMIT 50000;
@@ -57,9 +58,13 @@ printf '%s\n' "$sql" | mysql_cmd "$WIKI_DB_USER" "$WIKI_DB_NAME" "$WIKI_DB_PASSW
 {
   printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
   printf '%s\n' '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-  while IFS=$'\t' read -r title touched; do
+  while IFS=$'\t' read -r title ns touched; do
     [[ -z "$title" ]] && continue
     loc="https://${WIKI_DOMAIN}${path_prefix}${title}"
+    case "$ns" in
+      6) loc="https://${WIKI_DOMAIN}${path_prefix}File:${title}" ;;
+      14) loc="https://${WIKI_DOMAIN}${path_prefix}Category:${title}" ;;
+    esac
     lastmod="$touched"
     if [[ "$touched" =~ ^[0-9]{14}$ ]]; then
       lastmod="${touched:0:4}-${touched:4:2}-${touched:6:2}T${touched:8:2}:${touched:10:2}:${touched:12:2}Z"
