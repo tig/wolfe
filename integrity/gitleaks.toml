@@ -1,0 +1,33 @@
+# Wolfe gitleaks config. Keep this generic. Do not add instance names.
+title = "wolfe"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API key assignment"
+regex = '''(?i)(api[_-]?key|apikey|access[_-]?token|auth[_-]?token|secret[_-]?key)\s*[:=]\s*['\"][A-Za-z0-9_\-]{16,}['\"]'''
+keywords = ["api", "token", "secret"]
+
+[[rules]]
+id = "private-key"
+description = "PEM private key"
+regex = '''-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----'''
+
+[[allowlists]]
+description = "Template placeholders and vendor URLs"
+paths = [
+  '''site/.*\.example$''',
+  '''modules/.*/.*\.example$''',
+]
+regexes = [
+  '''<VAULT_NAME>''',
+  '''<SERVER_IP>''',
+  '''<ADMIN_CIDR>''',
+  '''<S3_ENDPOINT>''',
+  '''<BUCKET>''',
+  '''<ITEM_NAME>''',
+  '''<PHPBB_SHA256>''',
+  '''<MEDIAWIKI_SHA256>''',
+]

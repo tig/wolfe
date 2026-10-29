@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: modules/community/tools/robots [--dry-run|--yes]
+
+Write robots.txt into each enabled docroot from robots.txt.example,
+substituting the site-contract hostnames.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/../../.." && pwd)/tools/lib/common.sh"
+parse_args "$@"
+load_site
+
+require_value "FORUM_DOMAIN" "${FORUM_DOMAIN:-}"
+src="$(cd "$(dirname "$0")/.." && pwd)/robots.txt.example"
+[[ -f "$src" ]] || die "missing $src"
+
+render() {
+  sed \
+    -e "s#https://forums.example.org#https://${FORUM_DOMAIN}#g" \
+    -e "s#https://wiki.example.org#https://${WIKI_DOMAIN:-wiki.example.org}#g" \
+    "$src" | if wiki_enabled; then
+      sed 's/^# Sitemap: https:/Sitemap: https:/'
+    else
+      grep -v 'wiki.example.org' || true
+    fi
+}
+
+require_yes
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run: write ${FORUM_DOCROOT}/robots.txt"
+  wiki_enabled && log "dry-run: write ${WIKI_DOCROOT}/robots.txt"
+  log "----- forum robots.txt -----"
+  render
+  exit 0
+fi
+
+require_value "FORUM_DOCROOT" "${FORUM_DOCROOT:-}"
+render >"${FORUM_DOCROOT}/robots.txt"
+log "wrote ${FORUM_DOCROOT}/robots.txt"
+
+if wiki_enabled; then
+  require_value "WIKI_DOCROOT" "${WIKI_DOCROOT:-}"
+  render >"${WIKI_DOCROOT}/robots.txt"
+  log "wrote ${WIKI_DOCROOT}/robots.txt"
+fi

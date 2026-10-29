@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: modules/community/tools/phpbb-upgrade [--dry-run|--yes]
+
+Download the pinned phpBB archive, verify SHA-256, replace code while
+keeping config.php, files/, images/, store/, and ext/, then run
+bin/phpbbcli.php db:migrate and remove install/.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/../../.." && pwd)/tools/lib/common.sh"
+parse_args "$@"
+load_site
+
+require_value "PHPBB_VERSION" "${PHPBB_VERSION:-}"
+require_value "PHPBB_ARCHIVE_URL" "${PHPBB_ARCHIVE_URL:-}"
+require_value "FORUM_DOCROOT" "${FORUM_DOCROOT:-}"
+
+if [[ "$DRY_RUN" == "0" ]]; then
+  require_value "PHPBB_SHA256" "${PHPBB_SHA256:-}"
+  [[ "$PHPBB_SHA256" =~ ^[a-fA-F0-9]{64}$ ]] || die "PHPBB_SHA256 is not a 64-char hex digest."
+fi
+
+work="${BACKUP_WORK_DIR:-/tmp/wolfe}/phpbb-upgrade"
+archive="$work/phpbb-${PHPBB_VERSION}.zip"
+
+log "phpBB ${PHPBB_VERSION}"
+log "url: $PHPBB_ARCHIVE_URL"
+log "keep: config.php files/ images/ store/ ext/"
+
+require_yes
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run: curl -fsSL -o $archive $PHPBB_ARCHIVE_URL"
+  log "dry-run: verify sha256 $PHPBB_SHA256"
+  log "dry-run: extract over $FORUM_DOCROOT"
+  log "dry-run: php bin/phpbbcli.php db:migrate"
+  log "dry-run: rm -rf $FORUM_DOCROOT/install"
+  exit 0
+fi
+
+need_cmd curl
+need_cmd unzip
+need_cmd php
+
+mkdir -p "$work"
+curl -fsSL -o "$archive" "$PHPBB_ARCHIVE_URL"
+assert_sha256 "$archive" "$PHPBB_SHA256"
+
+stage="$work/stage"
+rm -rf "$stage"
+mkdir -p "$stage"
+unzip -q "$archive" -d "$stage"
+src="$stage"
+if [[ -d "$stage/phpBB3" ]]; then
+  src="$stage/phpBB3"
+fi
+
+rsync -a --delete \
+  --exclude 'config.php' \
+  --exclude 'files/' \
+  --exclude 'images/' \
+  --exclude 'store/' \
+  --exclude 'ext/' \
+  "$src/" "$FORUM_DOCROOT/"
+
+php "$FORUM_DOCROOT/bin/phpbbcli.php" db:migrate
+rm -rf "$FORUM_DOCROOT/install"
+
+log "phpBB ${PHPBB_VERSION} is in $FORUM_DOCROOT. Confirm ACP, then take maintenance off."

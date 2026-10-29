@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Read-only health glance. Never changes the origin.
+usage() {
+  cat <<'EOF'
+Usage: tools/health
+
+Prints URL status, disk, load, restic snapshot age, and installer-path checks.
+Read-only. No --yes.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
+parse_args "$@"
+load_site
+
+log "site: ${SITE_NAME:-unbound}"
+log "domain: ${SITE_DOMAIN:-unbound}"
+log "modules: ${MODULES:-none}"
+
+for url in ${HEALTH_URLS:-}; do
+  if is_placeholder "$url"; then
+    log "health: skipped placeholder $url"
+    continue
+  fi
+  printf 'health %s: ' "$url"
+  curl_head "$url"
+  for path in ${INSTALLER_PATHS:-}; do
+    local_url="${url%/}/$path"
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -I "$local_url" || true)"
+    if [[ "$code" == "200" ]]; then
+      err "installer path $local_url returned 200. That is a finding."
+    else
+      log "installer path $local_url -> $code"
+    fi
+  done
+done
+
+if [[ -d "${WEB_ROOT:-}" ]]; then
+  df -h "$WEB_ROOT" | tail -n 1 | awk '{print "disk: " $0}'
+else
+  log "disk: WEB_ROOT is not on this machine."
+fi
+
+if command -v uptime >/dev/null 2>&1; then
+  log "load: $(uptime)"
+fi
+
+units="${SYSTEMD_UNITS:-nginx apache2 php8.3-fpm php8.2-fpm mariadb mysql}"
+if command -v systemctl >/dev/null 2>&1; then
+  for unit in $units; do
+    if systemctl list-unit-files --type=service 2>/dev/null | grep -q "^${unit}"; then
+      state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+      log "unit $unit: ${state:-unknown}"
+    fi
+  done
+fi
+
+if command -v restic >/dev/null 2>&1 && [[ -n "${RESTIC_REPOSITORY:-}" ]] && ! is_placeholder "${RESTIC_REPOSITORY}"; then
+  if [[ -n "${RESTIC_PASSWORD:-}" ]]; then
+    latest="$(restic snapshots --latest 1 --json 2>/dev/null | sed -n 's/.*"time":"\([^"]*\)".*/\1/p' | head -n 1 || true)"
+    log "restic latest: ${latest:-unavailable}"
+  else
+    log "restic: repository is set; export RESTIC_PASSWORD from ${RESTIC_PASSWORD_ITEM:-the vault} to check age."
+  fi
+else
+  log "restic: not checked."
+fi

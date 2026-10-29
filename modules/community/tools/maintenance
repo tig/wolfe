@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: modules/community/tools/maintenance --on|--off|--status [--dry-run|--yes]
+
+Toggles phpBB board_disable. When the wiki is enabled, writes or removes
+WIKI_DOCROOT/maintenance.lock for wolfe-readonly.php.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/../../.." && pwd)/tools/lib/common.sh"
+
+MODE=""
+for arg in "$@"; do
+  case "$arg" in
+    --on) MODE=on ;;
+    --off) MODE=off ;;
+    --status) MODE=status ;;
+  esac
+done
+parse_args "$@"
+load_site
+
+[[ -n "$MODE" ]] || die "pass --on, --off, or --status."
+
+cli="${FORUM_DOCROOT:-}/bin/phpbbcli.php"
+php_bin="${PHP_BIN:-php}"
+
+status_forum() {
+  if command -v "$php_bin" >/dev/null 2>&1 && [[ -f "$cli" ]]; then
+    "$php_bin" "$cli" config:get board_disable || true
+  else
+    log "forum CLI not on this machine. Inspect board_disable in ACP or via SQL."
+  fi
+}
+
+if [[ "$MODE" == "status" ]]; then
+  status_forum
+  if wiki_enabled; then
+    if [[ -f "${WIKI_DOCROOT}/maintenance.lock" ]]; then
+      log "wiki: maintenance.lock present"
+    else
+      log "wiki: no maintenance.lock"
+    fi
+  fi
+  exit 0
+fi
+
+require_yes
+value=0
+[[ "$MODE" == "on" ]] && value=1
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run: php bin/phpbbcli.php config:set board_disable $value"
+  if wiki_enabled; then
+    if [[ "$MODE" == "on" ]]; then
+      log "dry-run: write ${WIKI_DOCROOT}/maintenance.lock"
+    else
+      log "dry-run: remove ${WIKI_DOCROOT}/maintenance.lock"
+    fi
+  fi
+  exit 0
+fi
+
+[[ -f "$cli" ]] || die "phpBB CLI not found at $cli"
+"$php_bin" "$cli" config:set board_disable "$value"
+
+if wiki_enabled; then
+  lock="${WIKI_DOCROOT}/maintenance.lock"
+  snippet="${WIKI_DOCROOT}/wolfe-readonly.php"
+  if [[ "$MODE" == "on" ]]; then
+    date -u +%Y-%m-%dT%H:%M:%SZ >"$lock"
+    if [[ ! -f "$snippet" ]]; then
+      err "wiki lock written, but $snippet is missing. Copy modules/community/snippets/wolfe-readonly.php and require it from LocalSettings.php."
+    fi
+  else
+    rm -f "$lock"
+  fi
+fi
+
+log "community maintenance: $MODE"

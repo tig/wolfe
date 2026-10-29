@@ -1,0 +1,22 @@
+# Instance bindings. The examples stay; the filled copies never do.
+site/site.env
+site/pins.env
+site/*.local.env
+modules/*/site.env
+modules/*/pins.env
+
+# Live artifacts an agent might pull down while working.
+*.bak
+*.tmp
+*.swp
+.DS_Store
+/tmp-wolfe/
+
+# Secret material of any kind.
+.secrets/
+*.pem
+*.key
+id_rsa
+id_ed25519
+auth.json
+credentials.json

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: tools/maintenance --on|--off|--status [--dry-run|--yes]
+
+Writes or removes WEB_ROOT/maintenance.on. If MAINTENANCE_HOOK is set,
+calls that script with the same --on/--off flag after the lock file.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
+
+MODE=""
+for arg in "$@"; do
+  case "$arg" in
+    --on) MODE=on ;;
+    --off) MODE=off ;;
+    --status) MODE=status ;;
+  esac
+done
+parse_args "$@"
+load_site
+
+[[ -n "$MODE" ]] || die "pass --on, --off, or --status."
+lock="${WEB_ROOT:-}/maintenance.on"
+
+if [[ "$MODE" == "status" ]]; then
+  if [[ -f "$lock" ]]; then
+    log "maintenance.on present at $lock"
+  else
+    log "no maintenance.on at $lock"
+  fi
+  if [[ -n "${MAINTENANCE_HOOK:-}" ]]; then
+    log "hook: $MAINTENANCE_HOOK"
+  fi
+  exit 0
+fi
+
+require_yes
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  if [[ "$MODE" == "on" ]]; then
+    log "dry-run: write $lock"
+  else
+    log "dry-run: remove $lock"
+  fi
+  if [[ -n "${MAINTENANCE_HOOK:-}" ]]; then
+    log "dry-run: $MAINTENANCE_HOOK --$MODE"
+  fi
+  exit 0
+fi
+
+require_value "WEB_ROOT" "${WEB_ROOT:-}"
+mkdir -p "$WEB_ROOT"
+if [[ "$MODE" == "on" ]]; then
+  date -u +%Y-%m-%dT%H:%M:%SZ >"$lock"
+else
+  rm -f "$lock"
+fi
+
+if [[ -n "${MAINTENANCE_HOOK:-}" ]]; then
+  if [[ -x "$MAINTENANCE_HOOK" ]]; then
+    "$MAINTENANCE_HOOK" --"$MODE" --yes
+  else
+    die "MAINTENANCE_HOOK is set but not executable: $MAINTENANCE_HOOK"
+  fi
+fi
+
+log "maintenance: $MODE"

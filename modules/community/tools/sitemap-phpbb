@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: modules/community/tools/sitemap-phpbb [--dry-run|--yes]
+
+Write FORUM_DOCROOT/sitemap.xml for publicly visible topics.
+Needs a database password in FORUM_DB_PASSWORD (from the vault).
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/../../.." && pwd)/tools/lib/common.sh"
+parse_args "$@"
+load_site
+
+require_value "FORUM_DOMAIN" "${FORUM_DOMAIN:-}"
+require_value "FORUM_DOCROOT" "${FORUM_DOCROOT:-}"
+require_value "FORUM_DB_NAME" "${FORUM_DB_NAME:-}"
+require_value "FORUM_DB_USER" "${FORUM_DB_USER:-}"
+prefix="${FORUM_TABLE_PREFIX:-phpbb_}"
+dest="${FORUM_DOCROOT}/sitemap.xml"
+
+sql=$(cat <<SQL
+SELECT t.topic_id, t.topic_last_post_time
+FROM ${prefix}topics t
+JOIN ${prefix}forums f ON f.forum_id = t.forum_id
+WHERE t.topic_visibility = 1
+  AND f.forum_password = ''
+  AND f.forum_type = 1
+ORDER BY t.topic_last_post_time DESC
+LIMIT 50000;
+SQL
+)
+
+log "sitemap -> $dest"
+log "public topics on ${FORUM_DOMAIN}"
+
+require_yes
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run SQL:"
+  log "$sql"
+  log "dry-run: write $dest"
+  exit 0
+fi
+
+resolve_secret FORUM_DB_PASSWORD FORUM_DB_PASSWORD_ITEM
+
+tmp="$(mktemp)"
+printf '%s\n' "$sql" | mysql_cmd "$FORUM_DB_USER" "$FORUM_DB_NAME" "$FORUM_DB_PASSWORD" >"$tmp"
+
+{
+  printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
+  printf '%s\n' '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+  while read -r topic_id last_post; do
+    [[ -z "$topic_id" ]] && continue
+    lastmod="$(date -u -d "@${last_post:-0}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf '  <url><loc>https://%s/viewtopic.php?t=%s</loc><lastmod>%s</lastmod></url>\n' \
+      "$FORUM_DOMAIN" "$topic_id" "$lastmod"
+  done <"$tmp"
+  printf '%s\n' '</urlset>'
+} >"$dest"
+
+rm -f "$tmp"
+log "wrote $dest"
