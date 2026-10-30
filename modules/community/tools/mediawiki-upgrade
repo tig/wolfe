@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: modules/community/tools/mediawiki-upgrade [--dry-run|--yes]
+
+Pinned MediaWiki upgrade. Skips when WIKI_ENABLED=0.
+Keeps LocalSettings.php, images/, extensions/, skins/, and wolfe-readonly.php.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/../../.." && pwd)/tools/lib/common.sh"
+parse_args "$@"
+load_site
+
+if ! wiki_enabled; then
+  log "wiki disabled; skip."
+  exit 0
+fi
+
+require_value "MEDIAWIKI_VERSION" "${MEDIAWIKI_VERSION:-}"
+require_value "MEDIAWIKI_ARCHIVE_URL" "${MEDIAWIKI_ARCHIVE_URL:-}"
+require_value "WIKI_DOCROOT" "${WIKI_DOCROOT:-}"
+
+if [[ "$DRY_RUN" == "0" ]]; then
+  require_value "MEDIAWIKI_SHA256" "${MEDIAWIKI_SHA256:-}"
+  [[ "$MEDIAWIKI_SHA256" =~ ^[a-fA-F0-9]{64}$ ]] || die "MEDIAWIKI_SHA256 is not a 64-char hex digest."
+fi
+
+work="${BACKUP_WORK_DIR:-/tmp/wolfe}/mediawiki-upgrade"
+archive="$work/mediawiki-${MEDIAWIKI_VERSION}.tar.gz"
+
+log "MediaWiki ${MEDIAWIKI_VERSION}"
+log "url: $MEDIAWIKI_ARCHIVE_URL"
+log "keep: LocalSettings.php images/ extensions/ skins/ wolfe-readonly.php"
+
+require_yes
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run: curl -fsSL -o $archive $MEDIAWIKI_ARCHIVE_URL"
+  log "dry-run: verify sha256 $MEDIAWIKI_SHA256"
+  log "dry-run: stage next to $WIKI_DOCROOT, copy kept trees, swap, run maintenance/run.php update"
+  exit 0
+fi
+
+need_cmd curl
+need_cmd tar
+need_cmd php
+
+mkdir -p "$work"
+curl -fsSL -o "$archive" "$MEDIAWIKI_ARCHIVE_URL"
+assert_sha256 "$archive" "$MEDIAWIKI_SHA256"
+
+stage="$work/stage"
+rm -rf "$stage"
+mkdir -p "$stage"
+tar -xzf "$archive" -C "$stage"
+src="$(find "$stage" -mindepth 1 -maxdepth 1 -type d -name 'mediawiki-*' | head -n 1)"
+[[ -n "$src" ]] || die "archive did not contain a mediawiki-* directory."
+
+for keep in LocalSettings.php images extensions skins wolfe-readonly.php maintenance.lock; do
+  if [[ -e "$WIKI_DOCROOT/$keep" ]]; then
+    rm -rf "$src/$keep"
+    cp -a "$WIKI_DOCROOT/$keep" "$src/$keep"
+  fi
+done
+
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+old="${WIKI_DOCROOT}.prev-${stamp}"
+mv "$WIKI_DOCROOT" "$old"
+mv "$src" "$WIKI_DOCROOT"
+
+if [[ -f "$WIKI_DOCROOT/maintenance/run.php" ]]; then
+  php "$WIKI_DOCROOT/maintenance/run.php" update --quick
+else
+  php "$WIKI_DOCROOT/maintenance/update.php" --quick
+fi
+
+log "MediaWiki ${MEDIAWIKI_VERSION} is in $WIKI_DOCROOT. Previous tree: $old"
+log "Confirm Special:Version, then take maintenance off. Remove $old after a day."

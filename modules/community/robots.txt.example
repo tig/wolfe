@@ -1,0 +1,13 @@
+# Deployed by modules/community/tools/robots.
+# Do not set Crawl-delay under User-agent: *.
+User-agent: *
+Allow: /
+
+# Closed after install. Defense in depth if a web-server rule is missing.
+Disallow: /install/
+Disallow: /install
+Disallow: /mw-config/
+Disallow: /mw-config
+
+Sitemap: https://forums.example.org/sitemap.xml
+# Sitemap: https://wiki.example.org/sitemap.xml

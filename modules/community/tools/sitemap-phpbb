@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: modules/community/tools/sitemap-phpbb [--dry-run|--yes]
+
+Write FORUM_DOCROOT/sitemap.xml (and shards) for publicly readable
+forums and topics. A forum is public when it is postable, has no
+password, and both GUESTS (group 1) and BOTS (group 6) have f_read.
+The same ACL applies to the topic half of the query.
+Needs FORUM_DB_PASSWORD from the vault.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")/../../.." && pwd)/tools/lib/common.sh"
+# shellcheck disable=SC1091
+source "$ROOT/modules/community/lib/sitemap.sh"
+parse_args "$@"
+load_site
+
+require_value "FORUM_DOMAIN" "${FORUM_DOMAIN:-}"
+require_value "FORUM_DOCROOT" "${FORUM_DOCROOT:-}"
+require_value "FORUM_DB_NAME" "${FORUM_DB_NAME:-}"
+require_value "FORUM_DB_USER" "${FORUM_DB_USER:-}"
+prefix="${FORUM_TABLE_PREFIX:-phpbb_}"
+dest="${FORUM_DOCROOT}/sitemap.xml"
+shard_size="${SITEMAP_SHARD_SIZE:-40000}"
+guest_id="${PHPBB_GUESTS_GROUP:-1}"
+bots_id="${PHPBB_BOTS_GROUP:-6}"
+
+sql="$(phpbb_sitemap_sql "$prefix" "$guest_id" "$bots_id")"
+
+log "sitemap -> $dest (shard size $shard_size)"
+log "public forums and topics on ${FORUM_DOMAIN}"
+
+require_yes
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run SQL:"
+  log "$sql"
+  log "dry-run: write $dest and shards of $shard_size URLs"
+  exit 0
+fi
+
+resolve_secret FORUM_DB_PASSWORD FORUM_DB_PASSWORD_ITEM
+
+tmp="$(mktemp)"
+printf '%s\n' "$sql" | mysql_cmd "$FORUM_DB_USER" "$FORUM_DB_NAME" "$FORUM_DB_PASSWORD" >"$tmp"
+
+urls="$(mktemp)"
+ppp="${PHPBB_POSTS_PER_PAGE:-30}"
+phpbb_rows_to_urls "$FORUM_DOMAIN" "$ppp" <"$tmp" >"$urls"
+
+total="$(wc -l <"$urls")"
+shards=$(( (total + shard_size - 1) / shard_size ))
+[[ "$shards" -lt 1 ]] && shards=1
+
+if [[ "$shards" -eq 1 ]]; then
+  write_urlset "$dest" "$urls"
+else
+  write_sitemap_index "$dest" "$FORUM_DOMAIN" "$shards"
+  shard_n=1
+  : >"$urls.chunk"
+  count=0
+  while IFS=$'\t' read -r loc lastmod; do
+    printf '%s\t%s\n' "$loc" "$lastmod" >>"$urls.chunk"
+    count=$((count + 1))
+    if [[ "$count" -ge "$shard_size" ]]; then
+      write_urlset "${FORUM_DOCROOT}/sitemap-${shard_n}.xml" "$urls.chunk"
+      shard_n=$((shard_n + 1))
+      : >"$urls.chunk"
+      count=0
+    fi
+  done <"$urls"
+  if [[ "$count" -gt 0 ]]; then
+    write_urlset "${FORUM_DOCROOT}/sitemap-${shard_n}.xml" "$urls.chunk"
+  fi
+fi
+
+rm -f "$tmp" "$urls" "$urls.chunk"
+log "wrote $dest ($total URLs, $shards shard(s))"

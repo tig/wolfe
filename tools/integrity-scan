@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Wrapper so "run the scan" is a tool, like everything else.
+exec "$(cd "$(dirname "$0")" && pwd)/../integrity/scan.sh" "$@"

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: tools/rebuild [--dry-run|--yes] [--from-snapshot ID]
+
+Skeleton for rebuilding one origin host. A human creates the empty
+Linux server and writes SERVER_IP into site/site.env. This script
+does not call a cloud API and does not change DNS.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
+
+FROM_SNAPSHOT=""
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --from-snapshot) FROM_SNAPSHOT="${2:-}"; shift 2 ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+parse_args "${args[@]:-}"
+load_site
+
+require_value "WEB_ROOT" "${WEB_ROOT:-}"
+require_value "RESTIC_REPOSITORY" "${RESTIC_REPOSITORY:-}"
+
+plan() {
+  cat <<PLAN
+rebuild plan
+  1. install-stack     web server, runtime, database, restic (handbook/host.md)
+  2. apply-security    installer denies, runtime hardening, tools/edge-allowlist
+  3. restore-data      restic snapshot ${FROM_SNAPSHOT:-<newest>} into the new docroots
+  4. verify-local      curl the origin on localhost
+  5. cutover           a human points Cloudflare at SERVER_IP=${SERVER_IP}
+  6. verify-public     tools/health
+  7. record            handbook/host.md and handbook/continuity.md
+PLAN
+}
+
+plan
+require_yes
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run: stop after the plan. --yes walks the local steps and still refuses DNS."
+  exit 0
+fi
+
+log "install-stack: install the packages named in handbook/host.md, then re-run if this host has none of them."
+need_cmd restic || die "install restic first."
+
+log "apply-security: ${ROOT}/tools/edge-allowlist --yes"
+"${ROOT}/tools/edge-allowlist" --yes
+
+target="${BACKUP_WORK_DIR:-/var/lib/wolfe/backup-work}/rebuild"
+mkdir -p "$target"
+if [[ -n "$FROM_SNAPSHOT" ]]; then
+  "${ROOT}/tools/backup" --restore "$FROM_SNAPSHOT" --target "$target" --yes
+else
+  die "pass --from-snapshot ID. Refusing to guess which snapshot to restore onto a new host."
+fi
+
+log "verify-local: point a scratch vhost at $target and curl it. Do not point public DNS yet."
+log "cutover: a human updates the Cloudflare A/AAAA record to SERVER_IP. This script will not."
+log "when public DNS is yours, run: ${ROOT}/tools/health"
+log "then update handbook/host.md in a pull request."

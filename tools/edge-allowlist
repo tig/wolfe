@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+usage() {
+  cat <<'EOF'
+Usage: tools/edge-allowlist [--dry-run|--yes] [--format ufw|nft]
+
+Fetch Cloudflare IP ranges and print (or apply) firewall rules that
+allow 80/443 from those ranges only, plus SSH from ADMIN_CIDR.
+EOF
+}
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
+
+FORMAT="ufw"
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --format) FORMAT="${2:-ufw}"; shift 2 ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+parse_args "${args[@]:-}"
+load_site
+
+v4_url="https://www.cloudflare.com/ips-v4"
+v6_url="https://www.cloudflare.com/ips-v6"
+
+log "source: $v4_url and $v6_url"
+log "ssh: port ${SSH_PORT:-22} from ${ADMIN_CIDR:-<ADMIN_CIDR>}"
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "dry-run: fetch ranges and print $FORMAT rules. --yes applies them."
+  log "before --yes on a live host: start a 10-minute dead-man that disables the firewall if you lock yourself out."
+  log "example: systemd-run --unit=wolfe-ufw-deadman --on-active=10m /usr/sbin/ufw disable"
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+  die "curl is required to fetch the published ranges."
+fi
+
+v4="$(curl -fsSL "$v4_url")"
+v6="$(curl -fsSL "$v6_url")"
+[[ -n "$v4" ]] || die "empty IPv4 list from Cloudflare."
+
+print_ufw() {
+  echo "ufw default deny incoming"
+  echo "ufw default allow outgoing"
+  if ! is_placeholder "${ADMIN_CIDR:-}"; then
+    echo "ufw allow from ${ADMIN_CIDR} to any port ${SSH_PORT:-22} proto tcp"
+  else
+    echo "# bind ADMIN_CIDR before applying SSH"
+  fi
+  local cidr
+  while read -r cidr; do
+    [[ -z "$cidr" ]] && continue
+    echo "ufw allow from $cidr to any port 80 proto tcp"
+    echo "ufw allow from $cidr to any port 443 proto tcp"
+  done <<<"$v4"$'\n'"$v6"
+}
+
+print_nft() {
+  echo "table inet wolfe {"
+  echo "  set cf4 { type ipv4_addr; flags interval; elements = {"
+  echo "$v4" | awk '{print "    " $1 ","}'
+  echo "  }; }"
+  echo "  set cf6 { type ipv6_addr; flags interval; elements = {"
+  echo "$v6" | awk '{print "    " $1 ","}'
+  echo "  }; }"
+  echo "  chain input {"
+  echo "    type filter hook input priority 0; policy drop;"
+  echo "    ct state established,related accept"
+  echo "    iif lo accept"
+  if ! is_placeholder "${ADMIN_CIDR:-}"; then
+    echo "    tcp dport ${SSH_PORT:-22} ip saddr ${ADMIN_CIDR} accept"
+  fi
+  echo "    tcp dport { 80, 443 } ip saddr @cf4 accept"
+  echo "    tcp dport { 80, 443 } ip6 saddr @cf6 accept"
+  echo "  }"
+  echo "}"
+}
+
+if [[ "$FORMAT" == "nft" ]]; then
+  rules="$(print_nft)"
+else
+  rules="$(print_ufw)"
+fi
+
+printf '%s\n' "$rules"
+
+require_yes
+if [[ "$DRY_RUN" == "1" ]]; then
+  exit 0
+fi
+
+if [[ "$FORMAT" == "ufw" ]]; then
+  need_cmd ufw
+  while read -r line; do
+    [[ "$line" == \#* || -z "$line" ]] && continue
+    # shellcheck disable=SC2086
+    eval "$line"
+  done <<<"$rules"
+  ufw --force enable
+else
+  need_cmd nft
+  printf '%s\n' "$rules" | nft -f -
+fi
+
+log "applied $FORMAT allowlist. Re-fetch when Cloudflare publishes new ranges."
