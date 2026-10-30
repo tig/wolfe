@@ -12,7 +12,7 @@ If `WIKI_ENABLED=0`, say so and stop. Otherwise treat it as a MediaWiki upgrade 
 
 ## "A member reported a scammer."
 
-`playbooks/reports-and-bans.md`. Investigate read-only. Classify. The guard refuses established members, founders, and admins. Dry-run the ban, the deletions, and the bot `Banned!` posts. Anything ambiguous goes to the human.
+`playbooks/reports-and-bans.md`. Investigate read-only. Classify. The guard refuses established members, founders, and admins. Dry-run the ban, the deletions, and the `Banned!` posts. A ban the human asked for logs as that human. The monitor logs as the bot and must not fall back. Anything ambiguous goes to the human.
 
 ## "We're getting a lot of spam."
 

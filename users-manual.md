@@ -60,19 +60,23 @@ Use this when `MODULES` lists `community`. The playbook is `modules/community/pl
 
 For a clear scammer on a new account it proposes, then after a yes:
 
-1. A permanent ban through the forum's own ban path, the same code the moderator control panel uses, so the log looks like a human moderator did it.
-2. An internal reason and a reason shown to the user, logged under the human admin you name (`<FORUM_ADMIN_USERNAME>`), not under the agent.
+1. A permanent ban through the forum's own ban path, the same code the moderator control panel uses.
+2. An internal reason and a reason shown to the user.
 3. Deletion of the spam posts.
 4. Closing of the reports.
-5. A short `Banned!` reply in each affected public thread, posted from the dedicated bot moderator account, telling members not to answer that person's PMs.
+5. A short `Banned!` reply in each affected public thread, telling members not to answer that person's PMs.
+
+The CLI takes an explicit acting-user flag and checks that this user can ban, delete, and close reports. It exits nonzero if the check fails.
+
+A ban you asked for is logged under you (`<FORUM_ADMIN_USERNAME>`). Automated monitor actions are logged under the dedicated bot moderator (`<FORUM_BOT_USER>`). The moderator log should show at a glance which actions were automated, so you can audit and reverse them. The monitor never falls back to your account. If the bot cannot act, it stops and notifies you.
 
 Every step dry-runs first. A guard refuses established members, founders, and admins. Anything ambiguous stops and comes back to you.
 
-An optional scheduled monitor (`cadence/reports-watch.md`) polls for new reports and runs the same path. Once you enable it, clear new-account scammers under the guard are handled without a per-event yes. Everything else is a notification to you.
+An optional scheduled monitor (`cadence/reports-watch.md`) polls for new reports and runs the same path as the bot. Once you enable it, clear new-account scammers under the guard are handled without a per-event yes. Everything else is a notification to you.
 
-**Confirms.** The classification, the ban, the deletions, the public `Banned!` posts, and enabling the monitor. A one-time yes to the monitor covers later clear new-account scammers. Tests never run against the live board. The bot account password lives only in `<VAULT_NAME>/forum-bot`.
+**Confirms.** The classification, the ban, the deletions, the public `Banned!` posts, the acting user, and enabling the monitor. A one-time yes to the monitor covers later clear new-account scammers, logged as the bot. Tests never run against the live board. The bot account password lives only in `<VAULT_NAME>/forum-bot`.
 
-**Verify.** The account is banned in the moderator control panel. The MCP log shows the human admin, not the bot, as the actor. The spam posts are gone. The reports are closed. Each public thread has the `Banned!` reply from the bot. Established, founder, and admin accounts are untouched.
+**Verify.** The account is banned in the moderator control panel. A ban you asked for shows you as the actor. A monitor ban shows the bot. The spam posts are gone. The reports are closed. Each public thread has the `Banned!` reply. Established, founder, and admin accounts are untouched.
 
 ## Spam floods, scrapers, and the WAF
 

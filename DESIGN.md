@@ -52,7 +52,7 @@ Wolfe has a generic core and optional modules. Each layer has one job. An agent 
 
 6. **Cadence, examples, and the users' manual.** `cadence/` is the plain-language prompts for recurring work. `examples/prompts.md` is how a human talks to the agent, and what the agent should do with each request. `users-manual.md` is the task-oriented menu for the custodian: what to say, what happens, what waits for a yes, and how to verify.
 
-7. **Modules.** A module is a stack-specific overlay: extra contract keys, extra playbooks, extra tools. `modules/community/` is the first fully worked module (phpBB, optional MediaWiki). The core must still make sense if you delete `modules/`.
+7. **Modules.** A module is a stack-specific overlay: extra contract keys, extra playbooks, extra tools. `modules/community/` is the first fully worked module (phpBB, optional MediaWiki). Automated moderation in that module logs under a dedicated bot account so a human can audit and reverse it. A manual ban the human asked for logs under the human. The core must still make sense if you delete `modules/`.
 
 Integrity is a peer of those layers, not an afterthought. `integrity/` scans for secrets and instance identifiers. This repository is public. A leaked token in a "generic" template is still a leaked token.
 

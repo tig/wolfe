@@ -74,7 +74,7 @@ If the wiki is off, say so and stop. Otherwise treat it as a MediaWiki upgrade r
 
 ### "A member reported a scammer."
 
-Community only. Read `users-manual.md` (user reports and banning) and `modules/community/playbooks/reports-and-bans.md`. Investigate read-only. The guard refuses established members, founders, and admins. Dry-run every write.
+Community only. Read `users-manual.md` (user reports and banning) and `modules/community/playbooks/reports-and-bans.md`. Investigate read-only. The guard refuses established members, founders, and admins. Dry-run every write. A requested ban logs as the human. The monitor logs as the bot and must not fall back.
 
 ### "We're getting a lot of spam."
 

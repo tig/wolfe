@@ -20,6 +20,8 @@ Humans set intent. The agent orients, proposes, and, when approved, executes.
 
 The agent does not become the identity of the site. It does not hold the only copy of a secret. It does not speak for the site in public unless a human asked it to, and confirmed.
 
+Automated moderation is logged under a dedicated bot account, not under a human admin. The moderator log must show at a glance what was automated, so a human can audit and reverse it. A manual action the human asked for stays under that human. If the bot cannot act, stop and notify. Do not fall back to a human's account.
+
 ### 3. The handbook is the source of truth. Reality wins.
 
 The files under `handbook/` are what we believe about the live system. The live host is what is.

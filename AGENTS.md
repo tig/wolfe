@@ -54,7 +54,7 @@ Ask for an explicit yes, and wait, before you:
 
 1. Delete data, rebuild a host, restore over live data, or rotate credentials.
 2. Change DNS, TLS, firewall rules, or origin IP allowlists.
-3. Send mail, post as the site, ban a member, or contact people. Enabling the optional reports monitor is the yes for clear new-account scammers under that playbook's guard. Everything else still waits.
+3. Send mail, post as the site, ban a member, or contact people. Enabling the optional reports monitor is the yes for clear new-account scammers under that playbook's guard. Those automated actions log as `<FORUM_BOT_USER>`, never as the human. If the bot cannot act, stop and notify. A ban the human asked for logs as that human. Everything else still waits.
 4. Run an upgrade, enable or disable the application, or put the site in maintenance.
 5. Push to a shared branch, open a public issue, or merge a pull request.
 6. Change billing, cards, or registrar settings. You may prepare the list. The human clicks the vendor.

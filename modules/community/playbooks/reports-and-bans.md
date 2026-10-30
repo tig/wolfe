@@ -33,27 +33,36 @@ Do not paste message bodies into a public handbook page. Do not paste emails.
 - **Needs a human.** Established, staff, or unclear. Stop. Say why.
 - **Not a scam.** Close the loop with the human. Do not ban.
 
-## Act (dry-run first, then `--yes`)
+## Acting user
 
-Use the forum's own ban path, the same code the moderator control panel uses. The ban must appear in the MCP log exactly as if the named human moderator clicked Ban. Do not `DELETE` from user tables. Do not write `phpbb_banlist` by hand.
+Every write takes an explicit acting-user flag. The CLI verifies that this user holds ban, delete, and report permissions on the forum. It exits nonzero if the user is missing, unresolved, or lacks those permissions. A permission failure is not a successful dry-run.
 
-After a yes:
+- **Manual.** The human asked for the action. Acting user is `<FORUM_ADMIN_USERNAME>`.
+- **Automated.** The reports monitor, or any scheduled run of this path. Acting user is `<FORUM_BOT_USER>`.
 
-1. Permanent ban. Internal reason (for other moderators) plus the reason shown to the user. Actor: `<FORUM_ADMIN_USERNAME>`.
-2. Delete the spam posts named in the reports.
-3. Close those reports.
-4. From the dedicated bot moderator account, post a short `Banned!` reply in each affected *public* thread. Tell members not to answer that person's PMs. Do not post in a private forum. Do not post as the human admin.
+The moderator log should show at a glance which actions were automated, so a human can audit and reverse them. Do not impersonate a human on an automated run. Do not fall back from the bot to the human. If the bot cannot act, stop and notify.
 
 The bot account password lives only in `<VAULT_NAME>/forum-bot`. It is not in git, not in `site/site.env`, and not in a test fixture.
 
-If a CLI implements this path, it exits nonzero when it cannot bootstrap: missing site contract, missing vault item, database unreachable, or the bot user unresolved. A bootstrap failure is not a successful dry-run.
+## Act (dry-run first, then `--yes`)
+
+Use the forum's own ban path, the same code the moderator control panel uses. The ban must appear in the MCP log as the acting user. Do not `DELETE` from user tables. Do not write `phpbb_banlist` by hand.
+
+After a yes (manual) or under the enabled monitor (automated):
+
+1. Permanent ban. Internal reason (for other moderators) plus the reason shown to the user. Actor: the acting user.
+2. Delete the spam posts named in the reports. Actor: the acting user.
+3. Close those reports. Actor: the acting user.
+4. Post a short `Banned!` reply in each affected *public* thread. Tell members not to answer that person's PMs. Do not post in a private forum. Actor: the acting user.
+
+If a CLI implements this path, it exits nonzero when it cannot bootstrap: missing site contract, missing vault item, database unreachable, missing `--acting-user`, or the acting user unresolved or under-permissioned. A bootstrap failure is not a successful dry-run.
 
 ## Optional monitor
 
-`cadence/reports-watch.md` polls for new open reports and runs this playbook.
+`cadence/reports-watch.md` polls for new open reports and runs this playbook with `--acting-user` set to `<FORUM_BOT_USER>`.
 
-Enabling the monitor is the human's yes for later *clear new-account scammers* that pass the guard. Everything else is a notification. The monitor does not loosen the guard. The monitor does not post from the human admin's account.
+Enabling the monitor is the human's yes for later *clear new-account scammers* that pass the guard. Everything else is a notification. The monitor does not loosen the guard. If the bot is missing or lacks ban, delete, or report permission, the monitor stops and notifies. It does not fall back to `<FORUM_ADMIN_USERNAME>`.
 
 ## After
 
-The MCP ban list shows the account. The log actor is `<FORUM_ADMIN_USERNAME>`. The bot posted `Banned!` only in the public threads you named. Established, founder, and admin accounts are untouched. Write a one-line incident note if the volume was unusual. Scrub identifiers.
+The MCP ban list shows the account. The log actor is the acting user you intended: the human for a requested ban, the bot for a monitor ban. Established, founder, and admin accounts are untouched. Write a one-line incident note if the volume was unusual. Scrub identifiers.
