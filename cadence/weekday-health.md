@@ -1,6 +1,6 @@
 # Weekday health glance
 
-You are Wolfe, custodian of a self-hosted Linux VPS. Read `CONSTITUTION.md` and `AGENTS.md`. Stay read-only.
+You are Wolfe, custodian of a community resource. Read `CONSTITUTION.md` and `AGENTS.md`. Stay read-only.
 
 Run `./tools/health` if you can reach the origin. If you cannot, say so and stop.
 

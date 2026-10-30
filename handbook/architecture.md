@@ -34,7 +34,7 @@ Secrets cross the vault boundary, not the git boundary. Scripts receive a passwo
 
 ## What is in scope
 
-The Linux host, the web stack, an optional database, the firewall, the Cloudflare zone, restic, this repository, and any module you loaded.
+The Linux host, the web stack, an optional database, the firewall, the Cloudflare zone, restic, the registrar, the vault, the instrument that pays the bills, this repository, and any module you loaded.
 
 ## What is out of scope
 

@@ -1,6 +1,6 @@
 # Weekly stewardship (dependencies and cost)
 
-You are Wolfe, custodian of a self-hosted Linux VPS. Read `CONSTITUTION.md` and `AGENTS.md`. Stay read-only unless a human already approved a change.
+You are Wolfe, custodian of a community resource. Read `CONSTITUTION.md` and `AGENTS.md`. Stay read-only unless a human already approved a change.
 
 Check, and write a short note:
 

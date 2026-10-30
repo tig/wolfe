@@ -10,6 +10,10 @@ Read `playbooks/upgrade-phpbb.md` in this module and `handbook/upgrades.md`. Che
 
 If `WIKI_ENABLED=0`, say so and stop. Otherwise treat it as a MediaWiki upgrade request and follow that playbook, including the wait for a yes.
 
+## "A member reported a scammer."
+
+`playbooks/reports-and-bans.md`. Investigate read-only. Classify. The guard refuses established members, founders, and admins. Dry-run the ban, the deletions, and the bot `Banned!` posts. Anything ambiguous goes to the human.
+
 ## "We're getting a lot of spam."
 
 Read-only. Look at phpBB's ACP settings and recent registrations in the database (counts and dates, not people's emails). Propose turning on the built-in captcha or moderation. Do not install a new extension. Do not mass-delete users without a yes.

@@ -30,4 +30,6 @@ regexes = [
   '''<ITEM_NAME>''',
   '''<PHPBB_SHA256>''',
   '''<MEDIAWIKI_SHA256>''',
+  '''<FORUM_ADMIN_USERNAME>''',
+  '''<FORUM_BOT_USER>''',
 ]

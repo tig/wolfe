@@ -1,8 +1,10 @@
 # Design note
 
-I built Wolfe as a framework for a painful Linux VPS, not as a cleaned-up copy of one community's repo.
+I built Wolfe as a framework for keeping a community resource alive across years and custodians, not as a cleaned-up copy of one community's repo.
 
-A private proof of concept already showed that a non-technical admin can run a real site by talking to an agent: one origin, a web app and an optional wiki, Cloudflare at the edge, restic to S3-compatible storage, a community-owned vault. That instance is a living repo. Wolfe is the generic system any such instance can rebuild onto, including ones that are not a forum at all.
+The customer is a volunteer who looks after a forum, a wiki, a photo archive, the domains and the bills behind it. They did not necessarily build it. They will not own it forever. The VPS is one part of that job. It is not the headline.
+
+A private proof of concept already showed that a non-technical custodian can run a real resource by talking to an agent: one origin, a web app and an optional wiki, Cloudflare at the edge, restic to S3-compatible storage, a community-owned vault. That instance is a living repo. Wolfe is the generic system any such instance can rebuild onto, including ones that are not a forum at all.
 
 I used that proof of concept as evidence of requirements, lessons, and guardrails. I did not copy its folder layout, its document names, or its instance facts. I did not clone it, and I did not change it.
 
@@ -30,7 +32,7 @@ Application-specific rescue tools (image proxies, scrapers, custom extensions) a
 
 Handoff is a continuity problem. More than one admin must be able to get in. Break-glass material is split so no one person is both the bottleneck and the unilateral actor.
 
-The pain is bigger than one application. The forum stack taught the shape. The shape is a VPS.
+The pain is bigger than one application. The forum stack taught the shape. The shape is the whole resource: the site, the host, the edge, the bills, and the next custodian.
 
 A later, scrubbed reading of that instance's runbooks added failure modes I would not have invented: a CDN cache rule that leaked one member's HTML chrome to the next visitor; phpBB sessions that die when `ip_check` sees rotating edge addresses; a scrape farm that wedges PHP while fail2ban stays at zero; installer paths that a vhost "allow all" reopens; restic that needs a dead-man ping or it fails quietly; object-storage FUSE mounts that turn a topic page into a twenty-second `stat()`; a distro rclone that cannot write and retries millions of times; DNS-01 still aimed at a nameserver that is no longer authoritative. Those lessons live in the handbook and the community module. They did not become a second `ops/` tree.
 
@@ -40,7 +42,7 @@ Wolfe has a generic core and optional modules. Each layer has one job. An agent 
 
 1. **Charter.** `CONSTITUTION.md` is law. `AGENTS.md` is the session entry. These stay at the repository root because that is the contract AI tools already look for.
 
-2. **Site contract.** `site/site.env` is the only place an instance puts its name, hostnames, paths, and feature flags. The template ships placeholders (`example.org`, `<SERVER_IP>`, `<VAULT_NAME>`). `MODULES` lists overlays to load. Empty means a generic VPS.
+2. **Site contract.** `site/site.env` is the only place an instance puts its name, hostnames, paths, and feature flags. The template ships placeholders (`example.org`, `<SERVER_IP>`, `<VAULT_NAME>`). `MODULES` lists overlays to load. Empty means no application overlay. The host, the edge, the bills, and the handoff still apply.
 
 3. **Handbook.** `handbook/` is the living record of *this* deployment: architecture, host, edge, security, backups, upgrades, incidents, continuity. It is written in the present tense. If it is wrong, the handbook is wrong.
 
@@ -48,7 +50,7 @@ Wolfe has a generic core and optional modules. Each layer has one job. An agent 
 
 5. **Tools.** `tools/` are parameterized scripts. They read the site contract. They default to `--dry-run`. They refuse to run if a placeholder is still in the environment. They do not provision a vendor account.
 
-6. **Cadence and examples.** `cadence/` is the plain-language prompts for recurring work. `examples/prompts.md` is how a human talks to the agent, and what the agent should do with each request.
+6. **Cadence, examples, and the users' manual.** `cadence/` is the plain-language prompts for recurring work. `examples/prompts.md` is how a human talks to the agent, and what the agent should do with each request. `users-manual.md` is the task-oriented menu for the custodian: what to say, what happens, what waits for a yes, and how to verify.
 
 7. **Modules.** A module is a stack-specific overlay: extra contract keys, extra playbooks, extra tools. `modules/community/` is the first fully worked module (phpBB, optional MediaWiki). The core must still make sense if you delete `modules/`.
 
@@ -68,6 +70,7 @@ tools          the commands the playbooks name
      +-- modules/<name>   overlay for one stack
 cadence        recurring prompts
 examples       how humans ask
+users-manual   task-oriented jobs for the custodian
 integrity      keep the public tree clean
 ```
 
@@ -79,7 +82,7 @@ Wolfe is the thing you start from, and the thing an instance repo can later rebu
 
 Differences I chose on purpose:
 
-1. **The product is a VPS custodian, not a forum installer.** The proof of concept is a board. Wolfe is the pain around any self-hosted Linux box. The forum stack is module one.
+1. **The product is a custodian for a community resource, not a forum installer.** The proof of concept is a board. Wolfe is the pain around keeping that kind of resource alive and handed off. The VPS is in the stack. The forum stack is module one.
 
 2. **Handbook vs playbooks vs tools, not one operations bucket.** Truth, procedure, and code rot at different speeds. Mixing them is how a script and a paragraph disagree and nobody notices.
 

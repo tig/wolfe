@@ -1,6 +1,8 @@
 # Example prompts
 
-These are things a human admin actually says. Each one names the stance the agent takes, the files it reads, and the first move.
+These are things a human custodian actually says. Each one names the stance the agent takes, the files it reads, and the first move.
+
+The task-oriented menu, including what the agent confirms and how to verify, is `users-manual.md`. This file is the short index.
 
 The agent does not invent extra work. The first block is generic Wolfe. The second block is the community module.
 
@@ -38,6 +40,10 @@ Rebuild. Read `playbooks/rebuild.md`. A human creates the empty host. The agent 
 
 Continuity. Read `handbook/continuity.md`. Propose vault access, SSH, git, and a restore-drill walkthrough. Do not create accounts until the human names the person and the role. Do not put that person's email in a public handbook page.
 
+### "The card on the VPS is expiring."
+
+Read-only. `users-manual.md` (billing) and `handbook/continuity.md`. Name the vendor screens. The human clicks. Do not enter a card number.
+
 ### "How much are we spending?"
 
 Read-only. Follow `cadence/weekly-stewardship.md` for the cost half. Use the community instruments on the continuity page. Do not open billing accounts the agent has not been given.
@@ -66,9 +72,17 @@ Read the community upgrade playbook. Check the pin. Dry-run. Wait for a yes. Do 
 
 If the wiki is off, say so and stop. Otherwise treat it as a MediaWiki upgrade request.
 
+### "A member reported a scammer."
+
+Community only. Read `users-manual.md` (user reports and banning) and `modules/community/playbooks/reports-and-bans.md`. Investigate read-only. The guard refuses established members, founders, and admins. Dry-run every write.
+
 ### "We're getting a lot of spam."
 
 Read-only. Look at phpBB's built-in anti-spam settings and recent registration counts, not people's emails. Do not install a new extension.
+
+### "These wiki links are dead."
+
+If the wiki is off, say so and stop. Otherwise stay read-only, name the missing page or file, and wait before editing. See `users-manual.md`.
 
 ### "Search engines aren't seeing the wiki."
 

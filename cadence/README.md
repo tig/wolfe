@@ -1,6 +1,6 @@
 # Cadence
 
-These are prompts you give an agent on a schedule. They are deliberately boring.
+These are prompts you give an agent on a schedule. They are deliberately boring. The custodian jobs behind them are in `users-manual.md`.
 
 Paste the whole file. Do not add "and while you're at it."
 
@@ -9,6 +9,7 @@ Paste the whole file. Do not add "and while you're at it."
 | Weekdays | `weekday-health.md` | A short report every time. |
 | Weekly | `weekly-stewardship.md` | Report if dependencies or cost moved. Always record a one-line "checked" in the session. |
 | Twice a week | `vulnerability-watch.md` | Silent unless something is serious. |
+| Optional | `reports-watch.md` | Community module only. Polls new reports under the ban guard. |
 
 "Silent" means the agent finishes with a single line that nothing serious showed up. It does not open a pull request, and it does not ping anyone.
 

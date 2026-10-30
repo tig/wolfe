@@ -1,8 +1,8 @@
 # Continuity and handoff
 
-Continuity is the first tenet because volunteer sites die from missing people, not missing features.
+Continuity is the first tenet because volunteer resources die from missing people, not missing features.
 
-This page is how the next admin gets in when you are in a hospital, on a beach, or done.
+This page is how the next custodian gets in when you are in a hospital, on a beach, or done. The jobs you say out loud are in `users-manual.md`.
 
 ## The test
 
