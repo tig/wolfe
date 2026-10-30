@@ -6,9 +6,9 @@ Use this when `MODULES` lists `community` and a human asked for a phpBB upgrade,
 
 1. Stay read-only until the plan is approved.
 2. Read the vendor notes for the exact version in `modules/community/pins.env` (or the bound copy).
-3. Confirm `PHPBB_SHA256` is a real hex digest copied from the vendor download page, not a placeholder.
+3. Confirm `PHPBB_SHA256` is a hex digest copied from the vendor download page. The digest must not be a placeholder.
 4. Confirm a restic snapshot newer than `RESTIC_MAX_AGE_HOURS`, or take one.
-5. Name the rollback: restore that snapshot, keep the old `FORUM_DOCROOT` aside until you say the board is good.
+5. Name the rollback: restore that snapshot. Keep the old `FORUM_DOCROOT` aside until the custodian says the board is good.
 
 ## Run
 
@@ -38,7 +38,7 @@ The upgrade tool:
 
 `db:migrate` can clobber CDN-safe session settings. Re-apply the list in `sessions-and-cookies.md` after every migrate.
 
-Confirm installer paths 403:
+Confirm installer paths return 403:
 
 ```bash
 ./tools/installer-block
@@ -50,7 +50,7 @@ Some phpBB trains add an "AI Crawlers" group and hide the board from those bots.
 ## After
 
 1. Open a logged-out forum index and one topic.
-2. Log in. If you see "form invalid," read `sessions-and-cookies.md`.
+2. Log in. If the form is invalid, read `sessions-and-cookies.md`.
 3. Post a test message. Upload one file if the board accepts uploads.
 4. Open ACP and confirm the version matches the pin.
 5. Update `handbook/upgrades.md` with the live version.

@@ -6,7 +6,7 @@ Core `tools/maintenance` writes `WEB_ROOT/maintenance.on`. This module's hook fl
 
 phpBB's board-disable flag is the switch. The hook sets it through `bin/phpbbcli.php config:set board_disable 1` (and back to `0`).
 
-When the CLI is not available, the hook prints the SQL you would run on `FORUM_TABLE_PREFIX + config` for `board_disable`. Prefer the CLI.
+When the CLI is not available, the hook prints the SQL to run on `FORUM_TABLE_PREFIX + config` for `board_disable`. Prefer the CLI.
 
 ## Wiki
 

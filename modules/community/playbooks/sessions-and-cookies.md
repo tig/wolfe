@@ -1,8 +1,8 @@
 # Sessions and cookies (phpBB behind a CDN)
 
-These settings are how a board behind Cloudflare stops lying to itself. Re-apply them after every `db:migrate`. A stock default will clobber them.
+These settings stop a board behind Cloudflare from rejecting its own sessions. Re-apply them after every `db:migrate`. A stock default will clobber them.
 
-Record the live values here once you have set them.
+Record the live values here once they are set.
 
 ## CDN-safe set
 
@@ -14,7 +14,7 @@ Record the live values here once you have set them.
 | `server_port` | `443` | The public hop is HTTPS. |
 | `ip_check` | `0` | Behind a CDN the origin sees rotating edge IPs unless real-IP is perfect on every request. IP pinning logs people out while they post. |
 | `browser_check` | `0` | Same, for User-Agent. Privacy browsers and in-app browsers change it. |
-| `session_length` | `604800` (7 days) | A two-hour session plus remember-me key rotation races when the browser restores several tabs. The losing response can `Set-Cookie` a key that was never stored and wipe persistent login. |
+| `session_length` | `604800` (7 days) | A 2 hour session plus remember-me key rotation races when the browser restores several tabs. The losing response can `Set-Cookie` a key that was never stored and wipe persistent login. |
 | `max_autologin_time` | `90` (days) | Remember-me lifetime. |
 
 ```bash
@@ -32,7 +32,7 @@ Session binding is the `Secure; HttpOnly` cookie, not the client IP.
 
 ## Real client IP
 
-The web server must set the remote address from `CF-Connecting-IP`, and only for Cloudflare's published ranges. Without that, phpBB, the logs, and fail2ban all see edge addresses, and `ip_check` (if you ever turn it back on) becomes a logout machine.
+The web server must set the remote address from `CF-Connecting-IP`, and only for Cloudflare's published ranges. Without that, phpBB, the logs, and fail2ban all see edge addresses. If `ip_check` is turned back on, those edge addresses log people out.
 
 Keep that trusted-proxy list in sync with `tools/edge-allowlist`.
 

@@ -6,7 +6,7 @@ Skip this playbook when `WIKI_ENABLED=0`.
 
 1. Stay read-only until the plan is approved.
 2. Read the MediaWiki release notes for `MEDIAWIKI_VERSION`.
-3. Confirm `MEDIAWIKI_SHA256` is a real hex digest from the vendor download page.
+3. Confirm `MEDIAWIKI_SHA256` is a hex digest from the vendor download page.
 4. Confirm a current restic snapshot, or take one.
 5. Record extra extensions and skins in `handbook/upgrades.md` so they survive.
 
